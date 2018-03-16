@@ -1,55 +1,18 @@
 package data.user
 
-import data.DaoImpl
+import data.Dao
 import entrypoint.Database
-import org.apache.shiro.crypto.hash.Sha256Hash
 
 
-interface UserDao {
-    fun getUser(userId: Long): UserEntity?
-
-    fun findUser(username: String): UserEntity?
-
-    fun createUser(user: UserEntity) : Long
-
-    fun getAllUsers(): List<UserEntity>
-
-    fun deleteUser(userId: Long)
-
-}
-
-class UserDAOImpl(database: Database) : UserDao, DaoImpl(database) {
-    companion object {
-        const val SCHEMA = "CREATE TABLE User (id INTEGER PRIMARY KEY, username VARCHAR(100) NOT NULL, hashedPassword VARCHAR(255) NOT NULL)"
-    }
-
-    init {
-        database.makeConnection().use {
-            it.createStatement().use {
-                it.executeUpdate(SCHEMA)
-
-                insertRole("user", "The default rolepermission given to all users.")
-                val adminRoleId = insertRole("admin", "The administrator rolepermission only given to site admins")
-                insertRolePermissions(adminRoleId, "user:*")
-                val adminId = createUser(UserEntity(username = "admin", hashedPassword = Sha256Hash("admin").toHex()))
-                insertUserRoles(adminId, adminRoleId)
-            }
-
-        }
-
-    }
 
 
-    private fun insertUserRoles(userId: Long, roleId: Long) = execute("INSERT INTO User_Roles VALUES ($userId,$roleId)")
 
-    private fun insertRole(name: String, description: String) = execute("INSERT INTO Role VALUES ($name,$description)")
+class UserDao(database: Database) : Dao(database) {
+    override val TABLE_NAME: String = "User"
+    override val CREATE: String = "CREATE TABLE $TABLE_NAME (id INTEGER PRIMARY KEY, username VARCHAR(100) NOT NULL, hashedPassword VARCHAR(255) NOT NULL)"
 
-
-    private fun insertRolePermissions(roleId: Long, permissions: String) = execute("INSERT INTO Role_Permissions VALUES ($roleId,$permissions)")
-
-
-    override fun getUser(userId: Long): UserEntity? {
-        val resultSet = select("SELECT * FROM User WHERE id = $userId")
+    fun getUser(userId: Long): UserEntity? {
+        val resultSet = select("SELECT * FROM $TABLE_NAME WHERE id = $userId")
         resultSet.use {
             while (it.next()) {
                 val id = it.getLong("id")
@@ -61,8 +24,8 @@ class UserDAOImpl(database: Database) : UserDao, DaoImpl(database) {
         return null
     }
 
-    override fun findUser(username: String): UserEntity? {
-        val resultSet = select("SELECT * FROM User WHERE username = $username")
+    fun findUser(username: String): UserEntity? {
+        val resultSet = select("SELECT * FROM $TABLE_NAME WHERE username = $username")
         //TODO Protect from SQL Injection
         resultSet.use {
             while (it.next()) {
@@ -74,13 +37,15 @@ class UserDAOImpl(database: Database) : UserDao, DaoImpl(database) {
         return null
     }
 
-    override fun createUser(user: UserEntity) =
-            execute("INSERT INTO User VALUES (${user.username},${user.hashedPassword})")
+    fun createUser(username: String, hashedPassword: String): UserEntity {
+        val id = execute("INSERT INTO $TABLE_NAME VALUES ($username,$hashedPassword)")
+        return UserEntity(id, username, hashedPassword)
+    }
 
 
-    override fun getAllUsers(): List<UserEntity> {
+    fun getAllUsers(): List<UserEntity> {
         val list = arrayListOf<UserEntity>()
-        val resultSet = select("SELECT * FROM User ORDER BY username")
+        val resultSet = select("SELECT * FROM $TABLE_NAME ORDER BY username")
         resultSet.use {
             while (it.next()) {
                 val id = it.getLong("id")
@@ -92,8 +57,8 @@ class UserDAOImpl(database: Database) : UserDao, DaoImpl(database) {
         return list
     }
 
-    override fun deleteUser(userId: Long) {
-        execute("DELETE FROM User WHERE id = $userId")
+    fun deleteUser(userId: Long) {
+        execute("DELETE FROM $TABLE_NAME WHERE id = $userId")
     }
 
 }

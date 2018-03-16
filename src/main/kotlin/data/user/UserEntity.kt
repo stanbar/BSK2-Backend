@@ -1,5 +1,5 @@
 package data.user
 
-class UserEntity(val id: Long? = null,
+class UserEntity(val id: Long,
                  val username: String,
                  val hashedPassword: String)
