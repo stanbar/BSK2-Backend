@@ -1,7 +1,7 @@
 package data.rolepermission
 
 import data.Dao
-import entrypoint.Database
+import data.Database
 
 interface RolePermissionDao {
     fun getPermissionsForRoleId(roleId: Long): Set<RolePermissionEntity>
@@ -16,11 +16,15 @@ class RolePermissionDaoImpl(database: Database) : RolePermissionDao, Dao(databas
 
     override fun getPermissionsForRoleId(roleId: Long): Set<RolePermissionEntity> {
         val list = hashSetOf<RolePermissionEntity>()
-        val resultSet = select("SELECT * FROM Role_Permissions WHERE roleId = $roleId")
-        while (resultSet.next()) {
-            val roleId = resultSet.getLong("roleId")
-            val permission = resultSet.getString("permission")
-            list.add(RolePermissionEntity(roleId, permission))
+        connect().query("SELECT * FROM Role_Permissions WHERE roleId = ?") {
+            setLong(1, roleId)
+        }.use {
+            val resultSet = it.executeQuery()
+            while (resultSet.next()) {
+                val roleId = resultSet.getLong("roleId")
+                val permission = resultSet.getString("permission")
+                list.add(RolePermissionEntity(roleId, permission))
+            }
         }
         return list
     }

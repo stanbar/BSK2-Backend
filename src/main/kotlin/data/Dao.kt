@@ -1,14 +1,14 @@
 package data
 
-import entrypoint.Database
-import java.sql.ResultSet
+import java.sql.Connection
+import java.sql.PreparedStatement
 import java.sql.Statement
 
-abstract class Dao(val database: Database){
+abstract class Dao(val database: Database) {
     abstract val TABLE_NAME: String
     abstract val CREATE: String
 
-    fun recreate(){
+    fun recreate() {
         execute("DROP TABLE IF EXISTS $TABLE_NAME")
         execute(CREATE)
     }
@@ -24,14 +24,19 @@ abstract class Dao(val database: Database){
             }
         }
     }
+    protected fun connect() = database.makeConnection()
 
-    protected fun select(sql: String): ResultSet {
-        database.makeConnection().use {
-            it.createStatement().use {
-                return it.executeQuery(sql)
-            }
+    protected fun Connection.query(
+            sql: String,
+            action: (PreparedStatement.() -> Unit)? = null
+    ): PreparedStatement {
+
+        prepareStatement(sql).let {
+            action?.invoke(it)
+            return it
         }
     }
+
 }
 
 

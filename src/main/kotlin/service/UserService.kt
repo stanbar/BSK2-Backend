@@ -2,54 +2,60 @@ package service
 
 import data.role.RoleDao
 import data.role.RoleModelMapper
+import data.rolepermission.RolePermissionDao
 import data.user.UserDao
 import data.user.UserModelMapper
 import data.userrole.UserRolesDao
 import model.User
 
-class UserService(val userDao: UserDao, val rolesDao: RoleDao, val userRolesDao: UserRolesDao) {
+class UserService(val userDao: UserDao, val rolesDao: RoleDao, val userRolesDao: UserRolesDao, val rolePermissionDao: RolePermissionDao) {
+
+    fun findUserById(userId: Long) = findUserBy(UserDao.Selector.ID, userId)
+
+    fun findUserByName(username: String) = findUserBy(UserDao.Selector.USERNAME, username)
+
+    private fun findUserBy(selector: UserDao.Selector, value: Any): User? {
+        val userEntity = userDao.findUserBy(selector, value) ?: return null
+        val user = UserModelMapper.fromEntity(userEntity)
+        fillUserRoles(user)
+        return user
+    }
 
     fun getAllUsers(): List<User> {
         return userDao.getAllUsers().map {
             val user = UserModelMapper.fromEntity(it)
-            val userRoles = userRolesDao.getRolesForUserId(user.id)
-            val roles = userRoles.map {
-                val roleEntity = rolesDao.getRole(it.roleId)
-                        ?: throw NullPointerException("Could not find role entity of id ${it.roleId}")
-                RoleModelMapper.fromEntity(roleEntity)
-            }.toSet()
-            user.roles.addAll(roles)
+            fillUserRoles(user)
             user
         }
     }
 
-    fun getUser(userId: Long): User? {
-        val userEntity = userDao.getUser(userId) ?: return null
-        val user = UserModelMapper.fromEntity(userEntity)
+    private fun fillUserRoles(user: User) {
         val userRoles = userRolesDao.getRolesForUserId(user.id)
         val roles = userRoles.map {
-            val roleEntity = rolesDao.getRole(it.roleId)
+            val roleEntity = rolesDao.findRoleById(it.roleId)
                     ?: throw NullPointerException("Could not find role entity of id ${it.roleId}")
+
+            val newPermissions = rolePermissionDao.getPermissionsForRoleId(roleEntity.id)
+                    .map { it.permission }
+
             RoleModelMapper.fromEntity(roleEntity)
+                    .apply { permissions.addAll(newPermissions) }
+
         }.toSet()
         user.roles.addAll(roles)
+    }
+
+    fun createUser(username: String, password: String): User {
+        val user = UserModelMapper.fromEntity(userDao.createUser(username, password))
+        val role = rolesDao.createRole(username,"User role")
+        rolePermissionDao.createPermissionForRoleId(role.id,"users:view:${role.id}")
+        userRolesDao.createRoleForUserId(user.id, role.id)
+        fillUserRoles(user)
         return user
     }
 
-    fun findUser(username: String): User? {
-        val userEntity = userDao.findUser(username) ?: return null
-        val user = UserModelMapper.fromEntity(userEntity)
-        val userRoles = userRolesDao.getRolesForUserId(user.id)
-        val roles = userRoles.map {
-            val roleEntity = rolesDao.getRole(it.roleId)
-                    ?: throw NullPointerException("Could not find role entity of id ${it.roleId}")
-            RoleModelMapper.fromEntity(roleEntity)
-        }.toSet()
-        user.roles.addAll(roles)
-        return user
+    fun deleteUser(userId: Long) {
+        userRolesDao.deleteRoleForUserId(userId)
+        userDao.deleteUser(userId)
     }
-
-    fun createUser(username: String, password: String) = userDao.createUser(username, password)
-
-    fun deleteUser(userId: Long) = userDao.deleteUser(userId)
 }
