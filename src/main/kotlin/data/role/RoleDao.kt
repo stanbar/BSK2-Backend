@@ -6,10 +6,11 @@ import entrypoint.Database
 
 class RoleDao(database: Database) :  Dao(database) {
     override val TABLE_NAME: String = "Role"
-    override val CREATE: String = "CREATE TABLE $TABLE_NAME (id INTEGER PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(255) NOT NULL)"
+    override val CREATE: String = "CREATE TABLE $TABLE_NAME (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, description TEXT NOT NULL)"
 
 
     fun getRole(roleId: Long): RoleEntity? {
+
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
@@ -18,7 +19,7 @@ class RoleDao(database: Database) :  Dao(database) {
     }
 
     fun createRole(name: String, description: String): RoleEntity {
-        val id = execute("INSERT INTO Role VALUES ($name,$description)")
+        val id = execute("INSERT INTO Role(name, description) VALUES(\"$name\", \"$description\")")
         return RoleEntity(id, name, description)
     }
 

@@ -9,7 +9,8 @@ import java.sql.DriverManager
 
 
 class Database {
-    val DB_PATH = ":memory:" // "mydatabase.db"
+    val DB_PATH = //":memory:"
+     "mydatabase.db"
 
     fun makeConnection() = DriverManager.getConnection("jdbc:sqlite:$DB_PATH")
 

@@ -11,7 +11,7 @@ interface RolePermissionDao {
 
 class RolePermissionDaoImpl(database: Database) : RolePermissionDao, Dao(database) {
     override val TABLE_NAME: String = "Role_Permissions"
-    override val CREATE: String = "CREATE TABLE $TABLE_NAME (roleId INTEGER FOREIGN KEY REFERENCES Role NOT NULL, permission VARCHAR(255) NOT NULL)"
+    override val CREATE: String = "CREATE TABLE $TABLE_NAME (roleId INTEGER NOT NULL, permission TEXT NOT NULL, FOREIGN KEY(roleId) REFERENCES Role(id))"
 
 
     override fun getPermissionsForRoleId(roleId: Long): Set<RolePermissionEntity> {
@@ -25,9 +25,9 @@ class RolePermissionDaoImpl(database: Database) : RolePermissionDao, Dao(databas
         return list
     }
 
-    override fun createPermissionForRoleId(roleId: Long, permission: String): RolePermissionEntity{
-        execute("INSERT INTO Role_Permissions VALUES ($roleId,$permission)")
-        return RolePermissionEntity(roleId,permission)
+    override fun createPermissionForRoleId(roleId: Long, permission: String): RolePermissionEntity {
+        execute("INSERT INTO Role_Permissions(roleId, permission) VALUES ($roleId, \"$permission\")")
+        return RolePermissionEntity(roleId, permission)
 
     }
 

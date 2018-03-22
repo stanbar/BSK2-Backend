@@ -8,11 +8,11 @@ class UserRolesDao(database: Database) : Dao(database) {
     override val TABLE_NAME: String
         = "User_Roles"
     override val CREATE: String
-        = "CREATE TABLE $TABLE_NAME (userId INTEGER FOREIGN KEY REFERENCES User NOT NULL, roleId INTEGER FOREIGN KEY  REFERENCES Role NOT NULL)"
+        = "CREATE TABLE $TABLE_NAME (userId INTEGER, roleId INTEGER, FOREIGN KEY(userId) REFERENCES User(id), FOREIGN KEY(roleId) REFERENCES Role(id) )"
 
 
     fun createRoleForUserId(userId: Long, roleId: Long): Long {
-        return execute("INSERT INTO $TABLE_NAME VALUES ($userId,$roleId)")
+        return execute("INSERT INTO $TABLE_NAME(userId, roleId) VALUES($userId, $roleId)")
     }
 
     fun getRolesForUserId(userId: Long): Set<UserRoleEntity> {
