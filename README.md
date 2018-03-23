@@ -2,8 +2,8 @@
 
 Technologies
 - Ktor - http server framework 
-- Shiro RBAC - security model  
-- SQLite - persistence layer
+- Shiro - RBAC security model  
+- SQLite - lightweight persistence layer in file
 
 ###Testing:
 - /signup:`./testLogin.sh signup stasbar hardpassword`
