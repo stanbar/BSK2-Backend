@@ -24,13 +24,35 @@ import io.ktor.routing.get
 import io.ktor.routing.post
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import io.ktor.sessions.*
 import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authc.*
 import org.apache.shiro.authz.AuthorizationException
 import org.apache.shiro.mgt.DefaultSecurityManager
+import org.apache.shiro.session.Session
+import org.apache.shiro.session.SessionListener
+import org.apache.shiro.session.mgt.DefaultSessionManager
+import org.apache.shiro.subject.Subject
+import service.RoleService
 import service.UserService
 
 class IdPrincipal(val id: Long) : Principal
+
+val sessionListener = object : SessionListener {
+    override fun onExpiration(session: Session?) {
+        Logger.d("Session expired: ${session?.id}")
+    }
+
+    override fun onStart(session: Session?) {
+        Logger.d("Session started: ${session?.id}")
+    }
+
+    override fun onStop(session: Session?) {
+        Logger.d("Session stopped: ${session?.id}")
+    }
+}
+
+class MySession(val id: String)
 
 fun Application.module() {
     val database = Database()
@@ -41,11 +63,23 @@ fun Application.module() {
     val userRolesDao = UserRolesDao(database)
     database.bootstrap(userDao, roleDao, rolePermissionDao, userRolesDao)
     val userService = UserService(userDao, roleDao, userRolesDao, rolePermissionDao)
+    val roleService = RoleService(roleDao, rolePermissionDao)
     val myRealm = MyRealm(userService)
 
+
     val securityManager = DefaultSecurityManager(myRealm)
+
+
+    val sessionManager = DefaultSessionManager()
+    sessionManager.sessionListeners = listOf(sessionListener)
+
+
+    securityManager.sessionManager = sessionManager
     SecurityUtils.setSecurityManager(securityManager)
 
+    install(Sessions) {
+        cookie<MySession>("SESSIONID")
+    }
     install(DefaultHeaders)
     install(ContentNegotiation) {
         gson {
@@ -53,8 +87,7 @@ fun Application.module() {
         }
     }
     install(Authentication) {
-        basic(myRealm.name) {
-
+        basic("basic") {
             realm = myRealm.name
 
             validate { credentials ->
@@ -95,6 +128,16 @@ fun Application.module() {
                 return@validate IdPrincipal(SecurityUtils.getSubject().principal as Long)
             }
         }
+//        session("session") {
+//            validate {
+//                val subject = Subject.Builder().sessionId(it).buildSubject()
+//                if(subject.isAuthenticated)
+//                    return@validate IdPrincipal(subject.principal as Long)
+//                else
+//                    return@validate null
+//
+//            }
+//        }
     }
     install(Routing) {
         post("/signup") {
@@ -119,38 +162,55 @@ fun Application.module() {
             }
 
         }
-        authenticate(myRealm.name) {
-
-
-            get("/whoami") {
+        authenticate("basic") {
+            get("/login") {
                 val currentUserId = call.principal<IdPrincipal>()?.id
+
+                val sessionId = SecurityUtils.getSubject().session.id as String
+                val mySession = MySession(sessionId)
+                call.sessions.set(mySession)
 
                 if (currentUserId != null) {
                     val user = userService.findUserById(currentUserId)
-                    if (user != null)
+                    if (user != null) {
                         call.respond(HttpStatusCode.OK, user)
-                    else
+                    } else
                         call.respond(HttpStatusCode.InternalServerError, "Could not find user after successful login")
                 } else
                     call.respond(HttpStatusCode.InternalServerError, "Subject's principal was null or not Long")
             }
-            get("/users") {
-                val currentUserId = call.principal<IdPrincipal>()?.id
-                try {
-                    SecurityUtils.getSubject().checkPermission("user")
-                } catch (e: AuthorizationException) {
-                    Logger.err(e)
-                }
-                if (currentUserId != null) {
-                    val user = userService.findUserById(currentUserId)
-                    if (user != null)
-                        call.respond(HttpStatusCode.OK, userService.getAllUsers())
-                    else
-                        call.respond(HttpStatusCode.InternalServerError, "Could not find user after successful login")
-                } else
-                    call.respond(HttpStatusCode.InternalServerError, "Subject's principal was null or not Long")
+
+        }
+
+        get("/users") {
+            val mySession = call.sessions.get<MySession>()
+            try {
+                if (mySession == null)
+                    throw AuthorizationException("Could not find session cookie")
+
+                val subject = Subject.Builder().sessionId(mySession.id).buildSubject()
+
+                if (!subject.isAuthenticated)
+                    throw AuthorizationException("Restored session is not authenticated")
+
+                subject.checkPermission("users")
+
+                call.respond(HttpStatusCode.OK, userService.getAllUsers())
+            } catch (e: AuthorizationException) {
+                Logger.err(e)
+                call.respond(HttpStatusCode.Forbidden, e)
             }
         }
+        get("/roles") {
+            try {
+                SecurityUtils.getSubject().checkPermission("roles")
+                call.respond(HttpStatusCode.OK, roleService.getAllRoles())
+            } catch (e: AuthorizationException) {
+                Logger.err(e)
+                call.respond(HttpStatusCode.Forbidden, e)
+            }
+        }
+
     }
 }
 

@@ -49,6 +49,7 @@ class UserService(val userDao: UserDao, val rolesDao: RoleDao, val userRolesDao:
         val user = UserModelMapper.fromEntity(userDao.createUser(username, password))
         val role = rolesDao.createRole(username,"User role")
         rolePermissionDao.createPermissionForRoleId(role.id,"users:view:${role.id}")
+        //TODO what else permissions ?
         userRolesDao.createRoleForUserId(user.id, role.id)
         fillUserRoles(user)
         return user

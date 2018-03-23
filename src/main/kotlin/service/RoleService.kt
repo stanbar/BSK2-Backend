@@ -5,7 +5,7 @@ import data.role.RoleModelMapper
 import data.rolepermission.RolePermissionDao
 import model.Role
 
-class RoleService(val rolesDao: RoleDao, val permissionDao: RolePermissionDao) {
+class RoleService(private val rolesDao: RoleDao, private val permissionDao: RolePermissionDao) {
 
     fun getAllRoles(): List<Role> {
         return rolesDao.getAllRoles().map {
