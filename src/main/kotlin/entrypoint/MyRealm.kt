@@ -13,7 +13,7 @@ import org.apache.shiro.subject.PrincipalCollection
 import service.UserService
 
 
-class MyRealm(val userService: UserService) : AuthorizingRealm() {
+class MyRealm(private val userService: UserService) : AuthorizingRealm() {
     init {
         name = "MyRealm"
         credentialsMatcher = HashedCredentialsMatcher(Sha256Hash.ALGORITHM_NAME)

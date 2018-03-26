@@ -1,10 +1,15 @@
 package data
 
+import com.github.salomonbrys.kodein.Kodein
+import com.github.salomonbrys.kodein.instance
 import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.Statement
 
-abstract class Dao(val database: Database) {
+abstract class Dao(kodein: Kodein) {
+
+    val database: Database = kodein.instance()
+
     abstract val TABLE_NAME: String
     abstract val CREATE: String
 
@@ -24,6 +29,7 @@ abstract class Dao(val database: Database) {
             }
         }
     }
+
     protected fun connect() = database.makeConnection()
 
     protected fun Connection.query(

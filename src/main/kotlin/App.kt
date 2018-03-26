@@ -1,11 +1,16 @@
-package entrypoint
 
+import com.github.salomonbrys.kodein.*
 import com.stasbar.Logger
 import data.Database
 import data.role.RoleDao
+import data.role.RoleDaoImpl
+import data.rolepermission.RolePermissionDao
 import data.rolepermission.RolePermissionDaoImpl
 import data.user.UserDao
+import data.user.UserDaoImpl
 import data.userrole.UserRolesDao
+import data.userrole.UserRolesDaoImpl
+import entrypoint.MyRealm
 import io.ktor.application.Application
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
@@ -29,54 +34,57 @@ import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authc.*
 import org.apache.shiro.authz.AuthorizationException
 import org.apache.shiro.mgt.DefaultSecurityManager
-import org.apache.shiro.session.Session
-import org.apache.shiro.session.SessionListener
+import org.apache.shiro.mgt.SecurityManager
+import org.apache.shiro.realm.AuthorizingRealm
 import org.apache.shiro.session.mgt.DefaultSessionManager
+import org.apache.shiro.session.mgt.SessionManager
 import org.apache.shiro.subject.Subject
 import service.RoleService
 import service.UserService
+import java.sql.Connection
 
 class IdPrincipal(val id: Long) : Principal
-
-val sessionListener = object : SessionListener {
-    override fun onExpiration(session: Session?) {
-        Logger.d("Session expired: ${session?.id}")
-    }
-
-    override fun onStart(session: Session?) {
-        Logger.d("Session started: ${session?.id}")
-    }
-
-    override fun onStop(session: Session?) {
-        Logger.d("Session stopped: ${session?.id}")
-    }
-}
-
 class MySession(val id: String)
 
+/**
+ * Dependency Injection Container
+ */
+val kodein = Kodein {
+    constant("DEBUG") with true
+    constant("dbPath") with "jdbc:sqlite:mydatabase.db"
+
+    bind<Database>() with singleton { Database(kodein) }
+
+    bind<Connection>() with provider { instance<Database>().makeConnection() }
+
+    bind<UserDao>() with singleton { UserDaoImpl(kodein) }
+    bind<RoleDao>() with singleton { RoleDaoImpl(kodein) }
+    bind<UserRolesDao>() with singleton { UserRolesDaoImpl(kodein) }
+    bind<RolePermissionDao>() with singleton { RolePermissionDaoImpl(kodein) }
+
+    bind<UserService>() with singleton { UserService(kodein) }
+    bind<RoleService>() with singleton { RoleService(kodein) }
+
+    bind<AuthorizingRealm>() with singleton { MyRealm(instance()) }
+    bind<SessionManager>() with singleton { DefaultSessionManager() }
+    bind<SecurityManager>() with singleton {
+        DefaultSecurityManager(instance<AuthorizingRealm>()).apply {
+            sessionManager = instance()
+        }
+    }
+
+}
+
+fun main(args: Array<String>) {
+    // Initial Database bootstrap
+    Utils.bootstrapDatabase(kodein)
+
+    SecurityUtils.setSecurityManager(kodein.instance())
+
+    embeddedServer(Netty, 8080, watchPaths = listOf("AppKt"), module = Application::module).start()
+}
+
 fun Application.module() {
-    val database = Database()
-
-    val userDao = UserDao(database)
-    val roleDao = RoleDao(database)
-    val rolePermissionDao = RolePermissionDaoImpl(database)
-    val userRolesDao = UserRolesDao(database)
-    database.bootstrap(userDao, roleDao, rolePermissionDao, userRolesDao)
-    val userService = UserService(userDao, roleDao, userRolesDao, rolePermissionDao)
-    val roleService = RoleService(roleDao, rolePermissionDao)
-    val myRealm = MyRealm(userService)
-
-
-    val securityManager = DefaultSecurityManager(myRealm)
-
-
-    val sessionManager = DefaultSessionManager()
-    sessionManager.sessionListeners = listOf(sessionListener)
-
-
-    securityManager.sessionManager = sessionManager
-    SecurityUtils.setSecurityManager(securityManager)
-
     install(Sessions) {
         cookie<MySession>("SESSIONID")
     }
@@ -88,7 +96,8 @@ fun Application.module() {
     }
     install(Authentication) {
         basic("basic") {
-            realm = myRealm.name
+
+            this.realm = kodein.instance<AuthorizingRealm>().name
 
             validate { credentials ->
                 Logger.d(credentials)
@@ -128,16 +137,7 @@ fun Application.module() {
                 return@validate IdPrincipal(SecurityUtils.getSubject().principal as Long)
             }
         }
-//        session("session") {
-//            validate {
-//                val subject = Subject.Builder().sessionId(it).buildSubject()
-//                if(subject.isAuthenticated)
-//                    return@validate IdPrincipal(subject.principal as Long)
-//                else
-//                    return@validate null
-//
-//            }
-//        }
+
     }
     install(Routing) {
         post("/signup") {
@@ -153,7 +153,7 @@ fun Application.module() {
                 call.response.header("Reason", "password is null or blank")
                 return@post
             }
-
+            val userService: UserService = kodein.instance()
             if (userService.findUserByName(username) != null) {
                 call.respond(HttpStatusCode.Conflict, "User with this name is already created")
             } else {
@@ -169,6 +169,8 @@ fun Application.module() {
                 val sessionId = SecurityUtils.getSubject().session.id as String
                 val mySession = MySession(sessionId)
                 call.sessions.set(mySession)
+
+                val userService: UserService = kodein.instance()
 
                 if (currentUserId != null) {
                     val user = userService.findUserById(currentUserId)
@@ -194,7 +196,7 @@ fun Application.module() {
                     throw AuthorizationException("Restored session is not authenticated")
 
                 subject.checkPermission("users")
-
+                val userService : UserService = kodein.instance()
                 call.respond(HttpStatusCode.OK, userService.getAllUsers())
             } catch (e: AuthorizationException) {
                 Logger.err(e)
@@ -202,6 +204,7 @@ fun Application.module() {
             }
         }
         get("/roles") {
+            val roleService : RoleService = kodein.instance()
             try {
                 SecurityUtils.getSubject().checkPermission("roles")
                 call.respond(HttpStatusCode.OK, roleService.getAllRoles())
@@ -219,6 +222,3 @@ suspend fun handleError(errMsg: String, statusCode: HttpStatusCode, call: Applic
     call?.respond(statusCode, errMsg)
 }
 
-fun main(args: Array<String>) {
-    embeddedServer(Netty, 8080, watchPaths = listOf("AppKt"), module = Application::module).start()
-}

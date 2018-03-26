@@ -1,5 +1,8 @@
 package service
 
+import com.github.salomonbrys.kodein.Kodein
+import com.github.salomonbrys.kodein.KodeinAware
+import com.github.salomonbrys.kodein.instance
 import data.role.RoleDao
 import data.role.RoleModelMapper
 import data.rolepermission.RolePermissionDao
@@ -8,14 +11,18 @@ import data.user.UserModelMapper
 import data.userrole.UserRolesDao
 import model.User
 
-class UserService(val userDao: UserDao, val rolesDao: RoleDao, val userRolesDao: UserRolesDao, val rolePermissionDao: RolePermissionDao) {
+class UserService(override val kodein: Kodein) : KodeinAware {
+    private val userDao: UserDao = instance()
+    private val rolesDao: RoleDao = instance()
+    private val userRolesDao: UserRolesDao = instance()
+    private val rolePermissionDao: RolePermissionDao = instance()
 
     fun findUserById(userId: Long) = findUserBy(UserDao.Selector.ID, userId)
 
     fun findUserByName(username: String) = findUserBy(UserDao.Selector.USERNAME, username)
 
     private fun findUserBy(selector: UserDao.Selector, value: Any): User? {
-        val userEntity = userDao.findUserBy(selector, value) ?: return null
+        val userEntity = userDao.findUserBy(selector.selector, value) ?: return null
         val user = UserModelMapper.fromEntity(userEntity)
         fillUserRoles(user)
         return user
@@ -47,8 +54,8 @@ class UserService(val userDao: UserDao, val rolesDao: RoleDao, val userRolesDao:
 
     fun createUser(username: String, password: String): User {
         val user = UserModelMapper.fromEntity(userDao.createUser(username, password))
-        val role = rolesDao.createRole(username,"User role")
-        rolePermissionDao.createPermissionForRoleId(role.id,"users:view:${role.id}")
+        val role = rolesDao.createRole(username, "User role")
+        rolePermissionDao.createPermissionForRoleId(role.id, "users:view:${role.id}")
         //TODO what else permissions ?
         userRolesDao.createRoleForUserId(user.id, role.id)
         fillUserRoles(user)
