@@ -50,7 +50,6 @@ class MySession(val id: String)
  * Dependency Injection Container
  */
 val kodein = Kodein {
-    constant("DEBUG") with true
     constant("dbPath") with "jdbc:sqlite:mydatabase.db"
 
     bind<Database>() with singleton { Database(kodein) }
