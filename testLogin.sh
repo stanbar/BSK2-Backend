@@ -61,7 +61,7 @@ case $METHOD in
 
 	"login")
 	curl -X GET -v \
-	--basic --user $USERNAME:$PASSWORD \
+	--basic --subject $USERNAME:$PASSWORD \
 	http://localhost:8080/$METHOD \
 	-H "Content-Type: application/x-www-form-urlencoded"
 	;;

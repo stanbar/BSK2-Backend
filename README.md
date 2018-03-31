@@ -1,10 +1,11 @@
 # Server BSK 2
 
 ### Technologies
-- **Ktor** - http server framework 
+- **Ktor** - http server framework
+- **Kodein** - dependency retrieval container 
 - **Shiro** - RBAC security model  
-- **SQLite** - lightweight persistence layer in file
-- **Kodein** - dependency retrieval container
+- **SQLite** - lightweight persistence layer
+- **ORMLite** - lightweight ORM mapper
 
 ### How to run
 

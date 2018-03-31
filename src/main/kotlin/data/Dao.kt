@@ -10,12 +10,12 @@ abstract class Dao(kodein: Kodein) {
 
     val database: Database = kodein.instance()
 
-    abstract val TABLE_NAME: String
-    abstract val CREATE: String
+    abstract val tableName: String
+    abstract val create: String
 
     fun recreate() {
-        execute("DROP TABLE IF EXISTS $TABLE_NAME")
-        execute(CREATE)
+        execute("DROP TABLE IF EXISTS $tableName")
+        execute(create)
     }
 
     protected fun execute(sql: String): Long {

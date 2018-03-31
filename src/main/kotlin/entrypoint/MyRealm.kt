@@ -10,10 +10,10 @@ import org.apache.shiro.authz.SimpleAuthorizationInfo
 import org.apache.shiro.crypto.hash.Sha256Hash
 import org.apache.shiro.realm.AuthorizingRealm
 import org.apache.shiro.subject.PrincipalCollection
-import service.UserService
+import service.SubjectService
 
 
-class MyRealm(private val userService: UserService) : AuthorizingRealm() {
+class MyRealm(private val subjectService: SubjectService) : AuthorizingRealm() {
     init {
         name = "MyRealm"
         credentialsMatcher = HashedCredentialsMatcher(Sha256Hash.ALGORITHM_NAME)
@@ -21,7 +21,7 @@ class MyRealm(private val userService: UserService) : AuthorizingRealm() {
 
     override fun doGetAuthenticationInfo(token: AuthenticationToken?): AuthenticationInfo? {
         val userNameToken = token as UsernamePasswordToken
-        val user = userService.findUserByName(userNameToken.username)
+        val user = subjectService.findSubjectByName(userNameToken.username)
 
         return if (user != null) {
             SimpleAuthenticationInfo(user.id, user.password, name)
@@ -30,8 +30,8 @@ class MyRealm(private val userService: UserService) : AuthorizingRealm() {
     }
 
     override fun doGetAuthorizationInfo(principals: PrincipalCollection): AuthorizationInfo? {
-        val userId = principals.fromRealm(name).iterator().next() as Long
-        val user = userService.findUserById(userId)
+        val subjectId = principals.fromRealm(name).iterator().next() as Long
+        val user = subjectService.findSubjectById(subjectId)
         return if (user != null) {
             val info = SimpleAuthorizationInfo()
             user.roles.forEach {
