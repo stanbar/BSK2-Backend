@@ -22,4 +22,5 @@ $ java -jar build/libs/bsk2-service.jar
 ### Testing:
 - /signup:`./testLogin.sh signup stasbar hardpassword`
 - /login:`./testLogin.sh login stasbar hardpassword`
-- get /users: `./testLogin.sh users -b {cookie from login response}`
+- GET /users: `./testLogin.sh users -b {cookie from login response}`
+- GET /user/{id}: `./testLogin.sh users/1 -b {cookie from login response}`

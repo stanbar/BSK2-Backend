@@ -9,7 +9,7 @@ import io.ktor.response.respond
 
 /**
  * Represents a Session authentication provider
- * @param name is the name of the provider, or `null` for a default provider
+ * @param name is the login of the provider, or `null` for a default provider
  */
 class SessionAuthenticationProvider(name: String?) : AuthenticationProvider(name) {
     internal var authenticationFunction: suspend (Long) -> Principal? = { null }

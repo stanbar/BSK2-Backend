@@ -11,10 +11,13 @@ class Car {
     @Id
     @GeneratedValue
     var id: Long = -1
+
     @Column(nullable = false)
     lateinit var brand: String
+
     @Column(nullable = false)
     lateinit var model: String
+
     @Column(nullable = false)
     var price: Double = -1.0
 }

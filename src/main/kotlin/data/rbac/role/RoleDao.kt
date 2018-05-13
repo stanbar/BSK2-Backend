@@ -1,21 +1,6 @@
 package data.rbac.role
 
+import com.j256.ormlite.dao.Dao
 
-interface RoleDao {
-    enum class Selector(val selector: String) {
-        ID("id"), NAME("name")
-    }
-    fun recreate()
 
-    fun findRoleById(roleId: Long): RoleEntity?
-
-    fun findRoleByName(rolename: String): RoleEntity?
-
-    fun findRoleBy(selector: String, value: Any): RoleEntity?
-
-    fun createRole(name: String, description: String): RoleEntity
-
-    fun getAllRoles(): List<RoleEntity>
-
-    fun deleteRole(roleId: Long)
-}
+interface RoleDao : Dao<Role, Long>

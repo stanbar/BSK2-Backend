@@ -1,58 +1,57 @@
 package service
 
-import com.github.salomonbrys.kodein.Kodein
-import com.github.salomonbrys.kodein.KodeinAware
-import com.github.salomonbrys.kodein.instance
-import data.rbac.role.RoleDao
-import data.rbac.role.RoleDaoImpl
-import data.rbac.role.RoleModelMapper
-import data.rbac.rolepermission.RolePermissionDao
-import data.rbac.rolepermission.RolePermissionModelMapper
-import data.rbac.subject_role.SubjectRolesDao
+
 import data.rbac.role.Role
+import data.rbac.role.RoleDao
+import data.rbac.rolepermission.RolePermission
+import data.rbac.rolepermission.RolePermissionDao
+import data.rbac.subject.Subject
+import data.rbac.subject_role.SubjectRole
+import data.rbac.subject_role.SubjectRolesDao
+import org.kodein.di.Kodein
+import org.kodein.di.KodeinAware
+import org.kodein.di.generic.instance
 
 class RoleService(override val kodein: Kodein) : KodeinAware {
-    private val rolesDao: RoleDaoImpl = instance()
-    private val rolePermissionDao: RolePermissionDao = instance()
-    private val subjectRoleDao: SubjectRolesDao = instance()
+    private val rolesDao: RoleDao by instance()
+    private val rolePermissionDao: RolePermissionDao by instance()
+    private val subjectRoleDao: SubjectRolesDao by instance()
 
-    fun getAllRoles(): List<Role> {
-        return rolesDao.getAllRoles().map {
-            val role = RoleModelMapper.fromEntity(it)
-            val permissions = rolePermissionDao.getPermissionsForRoleId(role.id)
-                    .map { RolePermissionModelMapper.fromEntity(it) }
-            role.permissions.addAll(permissions)
-            role
-        }
-    }
+    fun getAllRoles(): List<Role> = rolesDao.queryForAll()
 
-    fun findRoleById(roleId: Long) = findRoleBy(RoleDao.Selector.ID, roleId)
+    fun findRoleById(id: Long): Role? = rolesDao.queryForId(id)
 
-    fun findRoleByName(roleName: String) = findRoleBy(RoleDao.Selector.NAME, roleName)
+    fun findRoleByName(name: String) = rolesDao.queryForEq("name", name)
 
-    private fun findRoleBy(selector: RoleDao.Selector, value: Any): Role? {
-        val roleEntity = rolesDao.findRoleBy(selector.selector, value) ?: return null
-
-        val role = RoleModelMapper.fromEntity(roleEntity)
-        val permissions = rolePermissionDao.getPermissionsForRoleId(role.id)
-                .map { RolePermissionModelMapper.fromEntity(it) }
-        role.permissions.addAll(permissions)
-        return role
-    }
 
     fun createRole(name: String, description: String, permissionsStrings: List<String>): Role {
-        val role = RoleModelMapper.fromEntity(rolesDao.createRole(name, description))
-        val permissions = permissionsStrings.map {
-            RolePermissionModelMapper.fromEntity(rolePermissionDao.createPermissionForRoleId(role.id, it))
+        val role = Role().apply {
+            this.name = name
+            this.description = description
+        }.also { rolesDao.create(it) }
+
+        permissionsStrings.map {
+            RolePermission().apply { permission = it; this.role = role }
+        }.forEach {
+            rolePermissionDao.create(it)
         }
-        role.permissions.addAll(permissions)
+
+        rolesDao.refresh(role)
         return role
     }
 
-    fun deleteRole(roleId: Long) {
-        rolePermissionDao.deleteAllPermissionsForRoleId(roleId)
-        subjectRoleDao.deleteWhereRoleId(roleId)
-        rolesDao.deleteRole(roleId)
+    fun setDefaultRoleFor(subject: Subject) {
+
+        val defaultRole = createRole(
+                name = "subject_${subject.login}_${subject.id}",
+                description = "Subject login: ${subject.login} id: ${subject.id} role",
+                permissionsStrings = listOf("subjects:view:${subject.id}"))
+
+        SubjectRole().apply {
+            role = defaultRole
+            this.subject = subject
+        }.also { subjectRoleDao.create(it) }
+
     }
 
 }

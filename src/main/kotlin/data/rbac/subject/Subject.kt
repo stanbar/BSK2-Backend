@@ -1,19 +1,24 @@
 package data.rbac.subject
 
+import com.j256.ormlite.field.DatabaseField
+import com.j256.ormlite.field.ForeignCollectionField
 import com.j256.ormlite.table.DatabaseTable
-import data.rbac.role.Role
+import data.rbac.subject_role.SubjectRole
 import javax.persistence.Column
-import javax.persistence.Id
 
 @DatabaseTable(tableName = "Subject", daoClass = SubjectDaoImpl::class)
-class Subject{
-    @Id
+class Subject {
+
+    @DatabaseField(generatedId = true)
     var id: Long = -1
-    @Column
-    lateinit var name: String
+
+    @DatabaseField(unique = true)
+    lateinit var login: String
+
     @Column
     lateinit var password: String
-    @Column
-    //TODO test how to presist set
-    lateinit var roles: MutableSet<Role>
+
+
+    @ForeignCollectionField(eager = true, maxEagerLevel = 3)
+    lateinit var subjectRoles: Collection<SubjectRole>
 }
