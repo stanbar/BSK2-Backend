@@ -1,3 +1,4 @@
+
 import org.apache.shiro.authc.AuthenticationInfo
 import org.apache.shiro.authc.AuthenticationToken
 import org.apache.shiro.authc.SimpleAuthenticationInfo
@@ -8,7 +9,6 @@ import org.apache.shiro.authz.SimpleAuthorizationInfo
 import org.apache.shiro.crypto.hash.Sha256Hash
 import org.apache.shiro.realm.AuthorizingRealm
 import org.apache.shiro.subject.PrincipalCollection
-import service.LoginNotFoundException
 import service.SubjectService
 
 
@@ -21,17 +21,16 @@ class MyRealm(private val subjectService: SubjectService) : AuthorizingRealm() {
     override fun doGetAuthenticationInfo(token: AuthenticationToken?): AuthenticationInfo? {
         val userNameToken = token as UsernamePasswordToken
 
-        return try {
-            val user = subjectService.findSubjectByLogin(userNameToken.username)
+        val user = subjectService.findBy(SubjectService.Selector.LOGIN.value, userNameToken.username)
+        return if (user != null)
             SimpleAuthenticationInfo(user.id, user.password, name)
-        } catch (e: LoginNotFoundException) {
-            null
-        }
+        else null
+
     }
 
     override fun doGetAuthorizationInfo(principals: PrincipalCollection): AuthorizationInfo? {
         val subjectId = principals.fromRealm(name).iterator().next() as Long
-        val subject = subjectService.findSubjectById(subjectId)
+        val subject = subjectService.findById(subjectId)
         return if (subject != null) {
             val info = SimpleAuthorizationInfo()
             subject.subjectRoles.forEach {
