@@ -16,23 +16,32 @@ import service.RoleService
 
 object Utils {
     fun bootstrapDatabase(kodein: Kodein) {
-        val roleService: RoleService by kodein.instance()
-        val connectionSource : ConnectionSource by kodein.instance()
-        TableUtils.createTableIfNotExists(connectionSource, Car::class.java)
-        TableUtils.createTableIfNotExists(connectionSource, Mechanic::class.java)
-        TableUtils.createTableIfNotExists(connectionSource, Rent::class.java)
-        TableUtils.createTableIfNotExists(connectionSource, Repair::class.java)
-        TableUtils.createTableIfNotExists(connectionSource, User::class.java)
+        val connectionSourceDomain: ConnectionSource by kodein.instance()
 
-        TableUtils.createTableIfNotExists(connectionSource, Role::class.java)
-        TableUtils.createTableIfNotExists(connectionSource, RolePermission::class.java)
-        TableUtils.createTableIfNotExists(connectionSource, Subject::class.java)
-        TableUtils.createTableIfNotExists(connectionSource, SubjectRole::class.java)
+        with(connectionSourceDomain) {
+            TableUtils.createTableIfNotExists(this, Car::class.java)
+            TableUtils.createTableIfNotExists(this, Mechanic::class.java)
+            TableUtils.createTableIfNotExists(this, Rent::class.java)
+            TableUtils.createTableIfNotExists(this, Repair::class.java)
+            TableUtils.createTableIfNotExists(this, User::class.java)
 
-        roleService.createRole("carViewer",
-                "The default role given to all users, it allows to view all cars",
-                listOf("cars:view:*"))
+            TableUtils.createTableIfNotExists(this, Role::class.java)
+            TableUtils.createTableIfNotExists(this, RolePermission::class.java)
+            TableUtils.createTableIfNotExists(this, Subject::class.java)
+            TableUtils.createTableIfNotExists(this, SubjectRole::class.java)
+
+        }
+
+
+        //createDefaultRole();
 
     }
-
+    fun createDefaultRole(){
+        val roleService: RoleService by kodein.instance()
+        roleService.createRole("carsReader",
+                "The default role given to all users, it allows to view all cars",
+                listOf("cars:view:*"))
+    }
 }
+
+

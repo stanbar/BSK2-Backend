@@ -5,6 +5,7 @@ import data.domain.mechanic.MechanicDao
 import org.kodein.di.Kodein
 import org.kodein.di.KodeinAware
 import org.kodein.di.generic.instance
+import service.exception.SubjectAlreadyExist
 
 class MechanicService(override val kodein: Kodein) : KodeinAware, Service<Mechanic, MechanicDao>() {
     enum class Selector(val value: String) {

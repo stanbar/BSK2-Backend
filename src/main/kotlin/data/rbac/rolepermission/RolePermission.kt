@@ -6,7 +6,7 @@ import data.rbac.role.Role
 @DatabaseTable(tableName = "Role_Permission", daoClass = RolePermissionDaoImpl::class)
 class RolePermission{
     @DatabaseField(foreign = true)
-    lateinit var role: Role
+    @Transient lateinit var role: Role
 
     @DatabaseField(canBeNull = false)
     lateinit var permission : String

@@ -16,6 +16,7 @@ class Subject {
     lateinit var login: String
 
     @Column
+    @Transient
     lateinit var password: String
 
 

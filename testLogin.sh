@@ -1,6 +1,10 @@
 #!/bin/sh
 
 USERNAME=""
+FIRSTNAME=""
+LASTNAME=""
+PESEL=""
+DRIVERLICENCE=""
 PASSWORD=""
 METHOD=""
 COOKIEID=""
@@ -10,20 +14,40 @@ do
 key="$1"
 case $key in
     -u|--username|-l|--login)
-    USERNAME="$2"
-    shift # past argument
-    shift # past value
-    ;;
+        USERNAME="$2"
+        shift # past argument
+        shift # past value
+        ;;
     -p|--password)
-    PASSWORD="$2"
-    shift # past argument
-    shift # past value
-    ;;
+        PASSWORD="$2"
+        shift # past argument
+        shift # past value
+        ;;
+    -f|--firstName)
+        FIRSTNAME="$2"
+        shift # past argument
+        shift # past value
+        ;;
+    -l|--lastName)
+        LASTNAME="$2"
+        shift # past argument
+        shift # past value
+        ;;
+    --pesel)
+        PESEL="$2"
+        shift # past argument
+        shift # past value
+        ;;
+    -d|--driver)
+        DRIVERLICENCE="$2"
+        shift # past argument
+        shift # past value
+        ;;
     -b|--cookie)
-	COOKIEID="$2"
-	shift
-	shift
-    ;;
+        COOKIEID="$2"
+        shift
+        shift
+        ;;
     *)    # unknown option
 	if [ -z "${METHOD}" ]; then
 		METHOD="$1"
@@ -46,8 +70,22 @@ fi
 if [ -z "${USERNAME}" ]; then
 	USERNAME="admin"
 fi
+
 if [ -z "${PASSWORD}" ]; then
 	PASSWORD="admin"
+fi
+
+if [ -z "${FIRSTNAME}" ]; then
+	FIRSTNAME="stanislaw"
+fi
+if [ -z "${LASTNAME}" ]; then
+	LASTNAME="baranski"
+fi
+if [ -z "${PESEL}" ]; then
+	PESEL="12345605252"
+fi
+if [ -z "${DRIVERLICENCE}" ]; then
+	DRIVERLICENCE="673476254765"
 fi
 
 case $METHOD in
@@ -55,13 +93,13 @@ case $METHOD in
 	curl -X POST -v \
 	http://localhost:8080/$METHOD \
 	-H "Content-Type: application/x-www-form-urlencoded" \
-	-d "username=${USERNAME}&password=${PASSWORD}"
+	-d "login=${USERNAME}&password=${PASSWORD}&firstName=${FIRSTNAME}&lastName=${LASTNAME}&PESEL=${PESEL}&driverLicence=${DRIVERLICENCE}"
 	;;
 
 
 	"login")
 	curl -X GET -v \
-	--basic --subject $USERNAME:$PASSWORD \
+	--basic --user $USERNAME:$PASSWORD \
 	http://localhost:8080/$METHOD \
 	-H "Content-Type: application/x-www-form-urlencoded"
 	;;

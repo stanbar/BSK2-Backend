@@ -14,7 +14,7 @@ class User {
     @GeneratedValue
     var id: Long = -1
 
-    @DatabaseField(foreign = true, foreignAutoCreate = true)
+    @DatabaseField(foreign = true, foreignAutoCreate = true, foreignAutoRefresh = true)
     lateinit var subject: Subject // representation in RBAC database
 
     @Column(nullable = false)
@@ -27,5 +27,5 @@ class User {
     lateinit var lastName: String
 
     @Column(nullable = false)
-    var driverLicence: Long = -1
+    lateinit var driverLicence: String
 }

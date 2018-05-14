@@ -11,11 +11,11 @@ class Role{
     var id: Long = -1
 
     @DatabaseField(unique = true)
-    lateinit var name: String
+    var name: String = ""
 
     @DatabaseField
-    lateinit var description: String
+    var description: String = ""
 
-    @ForeignCollectionField(eager = true, maxEagerLevel = 1) //Don't increase since RolePermission.Role will be fetched
+    @ForeignCollectionField(eager = false, maxEagerLevel = 1) //Don't increase since RolePermission.Role will be fetched
     lateinit var permissions: Collection<RolePermission>
 }

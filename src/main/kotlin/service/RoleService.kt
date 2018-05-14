@@ -17,7 +17,7 @@ class RoleService(override val kodein: Kodein) : KodeinAware, Service<Role, Role
         ID("id"), NAME("name")
     }
 
-    override val dao : RoleDao by instance()
+    override val dao: RoleDao by instance()
     private val rolePermissionDao: RolePermissionDao by instance()
     private val subjectRoleDao: SubjectRolesDao by instance()
 
@@ -37,18 +37,27 @@ class RoleService(override val kodein: Kodein) : KodeinAware, Service<Role, Role
         return role
     }
 
-    fun setDefaultRoleFor(subject: Subject) {
-
+    fun setDefaultRoleFor(subject: Subject): Role {
         val defaultRole = createRole(
                 name = "subject_${subject.login}_${subject.id}",
                 description = "Subject login: ${subject.login} id: ${subject.id} role",
-                permissionsStrings = listOf("subjects:view:${subject.id}"))
+                permissionsStrings = listOf("subjects:read:${subject.id}", "cars:read:*"))
 
         SubjectRole().apply {
             role = defaultRole
             this.subject = subject
-        }.also { subjectRoleDao.create(it) }
+        }.also {
+            subjectRoleDao.create(it)
+        }
+        return defaultRole
 
+    }
+
+    fun createPermissionForRole(permission: String, role: Role): RolePermission {
+        return RolePermission().apply {
+            this.permission = permission
+            this.role = role
+        }.apply { rolePermissionDao.create(this) }
     }
 
 }
