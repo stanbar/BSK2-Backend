@@ -1,3 +1,4 @@
+
 import IllegalRequestParameterException.IllegalParameterException
 import com.j256.ormlite.jdbc.JdbcConnectionSource
 import com.stasbar.Logger
@@ -19,7 +20,6 @@ import data.rbac.subject.SubjectDao
 import data.rbac.subject.SubjectDaoImpl
 import data.rbac.subject_role.SubjectRolesDao
 import data.rbac.subject_role.SubjectRolesDaoImpl
-import entrypoint.MyRealm
 import io.ktor.application.Application
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
@@ -50,7 +50,7 @@ import org.apache.shiro.session.mgt.SessionManager
 import org.apache.shiro.subject.Subject
 import org.kodein.di.Kodein
 import org.kodein.di.generic.*
-import service.LoginNotFoundException
+import service.MechanicService
 import service.RoleService
 import service.SubjectService
 import service.UserService
@@ -70,17 +70,23 @@ val kodein = Kodein {
     bind<RolePermissionDao>() with singleton { RolePermissionDaoImpl(instance()) }
 
     bind<SubjectService>() with singleton { SubjectService(kodein) }
-    bind<UserService>() with singleton { UserService(kodein) }
+
     bind<RoleService>() with singleton { RoleService(kodein) }
 
     bind<AuthorizingRealm>() with singleton { MyRealm(instance()) }
     bind<SessionManager>() with singleton { DefaultSessionManager() }
     bind<SecurityManager>() with singleton {
         DefaultSecurityManager(instance<AuthorizingRealm>()).apply {
-            val sessionManager : SessionManager by kodein.instance()
+            val sessionManager: SessionManager by kodein.instance()
             this.sessionManager = sessionManager
         }
     }
+}
+val domainModule = Kodein {
+
+    bind<MechanicService>() with singleton { MechanicService(kodein) }
+    bind<UserService>() with singleton { UserService(kodein) }
+
     bind<CarDao>() with singleton { CarDaoImpl(instance()) }
     bind<MechanicDao>() with singleton { MechanicDaoImpl(instance()) }
     bind<UserDao>() with singleton { UserDaoImpl(instance()) }
@@ -94,9 +100,10 @@ fun main(args: Array<String>) {
     val securityManager: SecurityManager by kodein.instance()
     SecurityUtils.setSecurityManager(securityManager)
     embeddedServer(Netty, 8080, watchPaths = listOf("AppKt"), module = Application::module).start()
+
     Runtime.getRuntime().addShutdownHook(object : Thread() {
         override fun run() {
-            val connectionSource : JdbcConnectionSource by kodein.instance()
+            val connectionSource: JdbcConnectionSource by kodein.instance()
             connectionSource.close()
         }
     })
@@ -115,7 +122,7 @@ fun Application.module() {
     install(Authentication) {
         basic("basic") {
 
-            val realm :AuthorizingRealm by kodein.instance()
+            val realm: AuthorizingRealm by kodein.instance()
             this.realm = realm.name
 
 
@@ -174,13 +181,12 @@ fun Application.module() {
                 return@post
             }
             val subjectService: SubjectService by kodein.instance()
-            try {
-                subjectService.findSubjectByLogin(login)
+
+            if (subjectService.findBy(SubjectService.Selector.LOGIN.value, login) != null)
                 call.respond(HttpStatusCode.Conflict, "Subject with this login is already created")
-            } catch (e: LoginNotFoundException) {
-                val user = subjectService.createSubject(login, password)
-                call.respond(HttpStatusCode.OK, user)
-            }
+            else
+                call.respond(HttpStatusCode.OK, subjectService.createSubject(login, password))
+
 
         }
         authenticate("basic") {
@@ -194,7 +200,7 @@ fun Application.module() {
                 val userService: UserService by kodein.instance()
 
                 if (currentSubjectId != null) {
-                    val user = userService.findUserById(currentSubjectId)
+                    val user = userService.findById(currentSubjectId)
                     if (user != null) {
                         call.respond(HttpStatusCode.OK, user)
                     } else
@@ -218,7 +224,7 @@ fun Application.module() {
 
                 subject.checkPermission("users")
                 val subjectService: UserService by kodein.instance()
-                call.respond(HttpStatusCode.OK, subjectService.getAllUsers())
+                call.respond(HttpStatusCode.OK, subjectService.getAll())
             } catch (e: AuthorizationException) {
                 Logger.err(e)
                 call.respond(HttpStatusCode.Forbidden, e)
@@ -230,7 +236,7 @@ fun Application.module() {
                 val userService: UserService by kodein.instance()
                 try {
                     val id = call.parameters["id"]!!.toLong()
-                    userService.findUserById(id)
+                    userService.findById(id)
                 } catch (e: Exception) {
                     throw IllegalParameterException(call.parameters["id"])
                 }
@@ -242,7 +248,7 @@ fun Application.module() {
         get("/roles") {
             validateSession(call, "roles:read}") {
                 val roleService: RoleService by kodein.instance()
-                roleService.getAllRoles()
+                roleService.getAll()
             }
         }
 

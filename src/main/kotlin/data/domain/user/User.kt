@@ -24,7 +24,7 @@ class User {
     lateinit var firstName: String
 
     @Column(nullable = false)
-    lateinit var lastname: String
+    lateinit var lastName: String
 
     @Column(nullable = false)
     var driverLicence: Long = -1

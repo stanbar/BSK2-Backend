@@ -8,7 +8,8 @@ import javax.persistence.GeneratedValue
 import javax.persistence.Id
 
 @DatabaseTable(tableName = "Mechanic", daoClass = MechanicDaoImpl::class)
-class Mechanic {
+class
+Mechanic {
     @Id
     @GeneratedValue
     var id: Long = -1
