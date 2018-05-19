@@ -8,6 +8,7 @@ DRIVERLICENCE=""
 PASSWORD=""
 METHOD=""
 COOKIEID=""
+ROLEID=""
 POSITIONAL=()
 while [[ $# -gt 0 ]]
 do
@@ -48,6 +49,11 @@ case $key in
         shift
         shift
         ;;
+    -r|--role)
+        ROLEID="$2"
+        shift
+        shift
+        ;;
     *)    # unknown option
 	if [ -z "${METHOD}" ]; then
 		METHOD="$1"
@@ -70,11 +76,12 @@ fi
 if [ -z "${USERNAME}" ]; then
 	USERNAME="admin"
 fi
-
+if [ -z "${ROLEID}" ]; then
+	ROLEID="1"
+fi
 if [ -z "${PASSWORD}" ]; then
 	PASSWORD="admin"
 fi
-
 if [ -z "${FIRSTNAME}" ]; then
 	FIRSTNAME="stanislaw"
 fi
@@ -96,18 +103,29 @@ case $METHOD in
 	-d "login=${USERNAME}&password=${PASSWORD}&firstName=${FIRSTNAME}&lastName=${LASTNAME}&PESEL=${PESEL}&driverLicence=${DRIVERLICENCE}"
 	;;
 
-
-	"login")
+	"myRoles")
 	curl -X GET -v \
 	--basic --user $USERNAME:$PASSWORD \
 	http://localhost:8080/$METHOD \
 	-H "Content-Type: application/x-www-form-urlencoded"
 	;;
 
+	"login")
+	curl -X POST -v \
+	--basic --user $USERNAME:$PASSWORD \
+	http://localhost:8080/$METHOD \
+	-H "Content-Type: application/x-www-form-urlencoded" \
+	-d "roleId=${ROLEID}"
+	;;
+
+    grand/*)
+    curl -X GET -v \
+    http://localhost:8080/$METHOD
+    ;;
+
 	*)
 	curl -X GET -v \
 	-b "SESSIONID=${COOKIEID}" \
-	http://localhost:8080/$METHOD \
-	-H "Content-Type: application/x-www-form-urlencoded"
+	http://localhost:8080/$METHOD
 	;;
 esac

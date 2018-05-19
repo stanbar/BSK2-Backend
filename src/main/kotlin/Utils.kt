@@ -1,4 +1,3 @@
-
 import com.j256.ormlite.support.ConnectionSource
 import com.j256.ormlite.table.TableUtils
 import data.domain.car.Car
@@ -31,16 +30,29 @@ object Utils {
             TableUtils.createTableIfNotExists(this, SubjectRole::class.java)
 
         }
-
-
-        //createDefaultRole();
-
+        //createDefaultRole()
     }
-    fun createDefaultRole(){
+
+
+    fun createDefaultRole() {
         val roleService: RoleService by kodein.instance()
-        roleService.createRole("carsReader",
-                "The default role given to all users, it allows to view all cars",
-                listOf("cars:view:*"))
+
+        roleService.createRole("admin", "Access to read and update whole domain database",
+                listOf(
+                        Permission.from(Permission.Domain.USER, Permission.Action.ALL),
+                        Permission.from(Permission.Domain.CAR, Permission.Action.ALL),
+                        Permission.from(Permission.Domain.RENT, Permission.Action.ALL),
+                        Permission.from(Permission.Domain.REPAIR, Permission.Action.ALL)
+                ))
+
+        roleService.createRole("moderator", "Access to read and update users and cars",
+                listOf(
+                        Permission.from(Permission.Domain.USER, Permission.Action.READ),
+                        Permission.from(Permission.Domain.USER, Permission.Action.UPDATE),
+                        Permission.from(Permission.Domain.CAR, Permission.Action.READ),
+                        Permission.from(Permission.Domain.CAR, Permission.Action.UPDATE)
+                )
+        )
     }
 }
 

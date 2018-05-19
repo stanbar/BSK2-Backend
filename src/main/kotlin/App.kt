@@ -1,6 +1,6 @@
-import IllegalRequestParameterException.IllegalParameterException
 import com.j256.ormlite.support.ConnectionSource
 import com.stasbar.Logger
+import exception.IllegalParameterException
 import io.ktor.application.Application
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
@@ -12,6 +12,7 @@ import io.ktor.gson.gson
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
 import io.ktor.request.receive
+import io.ktor.request.receiveParameters
 import io.ktor.response.header
 import io.ktor.response.respond
 import io.ktor.routing.Routing
@@ -23,16 +24,20 @@ import io.ktor.sessions.*
 import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authc.*
 import org.apache.shiro.authz.AuthorizationException
+import org.apache.shiro.mgt.DefaultSubjectFactory
 import org.apache.shiro.mgt.SecurityManager
 import org.apache.shiro.realm.AuthorizingRealm
+import org.apache.shiro.subject.SimplePrincipalCollection
 import org.apache.shiro.subject.Subject
+import org.apache.shiro.subject.support.DefaultSubjectContext
 import org.kodein.di.generic.instance
 import service.RoleService
 import service.SubjectService
 import service.UserService
 
 class IdPrincipal(val id: Long) : Principal
-class MySession(val id: String)
+class RolePrincipal(val roleId: Long) : Principal
+class MySession(val id: String, val roleId: Long)
 
 fun main(args: Array<String>) {
     // Initial Database bootstrap
@@ -49,7 +54,10 @@ fun main(args: Array<String>) {
     })
 }
 
+
 fun Application.module() {
+    val realm: AuthorizingRealm by kodein.instance()
+
     install(Sessions) {
         cookie<MySession>("SESSIONID")
     }
@@ -62,14 +70,10 @@ fun Application.module() {
     }
     install(Authentication) {
         basic("basic") {
-
-            val realm: AuthorizingRealm by kodein.instance()
             this.realm = realm.name
-
 
             validate { credentials ->
                 Logger.d(credentials)
-
                 if (!SecurityUtils.getSubject().isAuthenticated) {
                     val token = UsernamePasswordToken(credentials.name, credentials.password)
                     token.isRememberMe = true
@@ -108,6 +112,10 @@ fun Application.module() {
 
     }
     install(Routing) {
+
+        val userService: UserService by kodein.instance()
+        val subjectService: SubjectService by kodein.instance()
+
         post("/signup") {
             val post = call.receive<Parameters>()
             val login = post["login"]
@@ -141,8 +149,8 @@ fun Application.module() {
                 call.response.header("Reason", "PESEL is null or blank")
                 return@post
             }
-            val subjectService: SubjectService by kodein.instance()
-            val userService: UserService by kodein.instance()
+
+
 
             if (subjectService.findBy(SubjectService.Selector.LOGIN.value, login) != null)
                 call.respond(HttpStatusCode.Conflict, "Subject with this login is already created")
@@ -150,65 +158,81 @@ fun Application.module() {
                 val createdUser = userService.createUser(login, password, firstName, lastName, PESEL, driverLicence)
                 call.respond(HttpStatusCode.OK, createdUser)
             }
-
         }
         authenticate("basic") {
-            get("/login") {
+            get("/myRoles") {
                 val currentSubjectId = call.principal<IdPrincipal>()?.id
-
-                val sessionId = SecurityUtils.getSubject().session.id as String
-                val mySession = MySession(sessionId)
-                call.sessions.set(mySession)
-
-                val userService: UserService by kodein.instance()
 
                 if (currentSubjectId != null) {
                     val user = userService.findById(currentSubjectId)
                     if (user != null) {
-                        call.respond(HttpStatusCode.OK, user)
+                        val response = user.subject.subjectRoles.map {
+                            val role = it.role
+                            hashMapOf("id" to role.id, "name" to role.name, "description" to role.description)
+                        }
+                        call.respond(HttpStatusCode.OK, response)
                     } else
                         call.respond(HttpStatusCode.InternalServerError, "Could not find subject after successful login")
                 } else
                     call.respond(HttpStatusCode.InternalServerError, "Subject's principal was null or not Long")
             }
 
+            post("/login") {
+                val parameters = call.receiveParameters()
+                val selectedRoleId = parameters["roleId"]?.toLongOrNull()
+                if (selectedRoleId == null) {
+                    call.response.status(HttpStatusCode.NonAuthoritativeInformation)
+                    call.response.header("Reason", "roleId is null or blank")
+                    return@post
+                }
+
+                val currentSubjectId = call.principal<IdPrincipal>()?.id
+                if (currentSubjectId != null) {
+                    val user = userService.findById(currentSubjectId)
+                    if (user != null) {
+                        val currentRole = user.subject.subjectRoles.find { it.role.id == selectedRoleId }
+                        if (currentRole != null) {
+                            val sessionId = SecurityUtils.getSubject().session.id as String
+                            val mySession = MySession(sessionId, selectedRoleId)
+
+                            call.sessions.set(mySession)
+
+                            //Prevent from exposing all user roles
+                            user.subject.subjectRoles = user.subject.subjectRoles.filter { it.role.id == selectedRoleId }
+                            call.respond(HttpStatusCode.OK, user)
+                        } else {
+                            call.respond(HttpStatusCode.Unauthorized, "You don't have role with id \"$selectedRoleId\"")
+                        }
+
+                    } else
+                        call.respond(HttpStatusCode.InternalServerError, "Could not find subject after successful login")
+                } else
+                    call.respond(HttpStatusCode.InternalServerError, "Subject's principal was null or not Long")
+            }
         }
 
+
         get("/users") {
-            val mySession = call.sessions.get<MySession>()
-            try {
-                if (mySession == null)
-                    throw AuthorizationException("Could not find session cookie")
-
-                val subject = Subject.Builder().sessionId(mySession.id).buildSubject()
-
-                if (!subject.isAuthenticated)
-                    throw AuthorizationException("Restored session is not authenticated")
-
-                subject.checkPermission("users:read:*")
-                val subjectService: UserService by kodein.instance()
-                call.respond(HttpStatusCode.OK, subjectService.getAll())
-            } catch (e: AuthorizationException) {
-                Logger.err(e)
-                call.respond(HttpStatusCode.Forbidden, e)
+            validateSession(call, "user:read:*") {
+                subjectService.getAll()
             }
         }
 
         get("/users/{id}") {
             try {
                 val id = call.parameters["id"]!!.toLong()
-                validateSession(call, "roles:read:$id") {
-                    val userService: UserService by kodein.instance()
+                validateSession(call, "user:read:$id") {
                     userService.findById(id)
                 }
             } catch (e: Exception) {
+                e.printStackTrace()
                 throw IllegalParameterException(call.parameters["id"])
             }
 
         }
 
         get("/roles") {
-            validateSession(call, "roles:read:*") {
+            validateSession(call, "role:read:*") {
                 val roleService: RoleService by kodein.instance()
                 roleService.getAll()
             }
@@ -217,20 +241,53 @@ fun Application.module() {
             call.respond(HttpStatusCode.OK, "BSK2")
         }
 
+        //TODO remove it, security leak
+        get("/grand/{subjectId}/{roleId}") {
+            try {
+                val subjectId = call.parameters["subjectId"]!!.toLong()
+                val roleId = call.parameters["roleId"]!!.toLong()
+
+                val roleService: RoleService by kodein.instance()
+                val role = roleService.findById(roleId)
+                val subject = subjectService.findById(subjectId)
+                roleService.addRoleToSubject(role!!, subject!!)
+                call.respond(subjectService.findById(subjectId)!!)
+
+            } catch (e: Exception) {
+                throw IllegalParameterException("${call.parameters["subjectId"]} and ${call.parameters["roleId"]}")
+            }
+
+        }
 
     }
 }
 
 suspend fun validateSession(call: ApplicationCall, permissionRequired: String, allowed: () -> Any?) {
+    val realm: AuthorizingRealm by kodein.instance()
+
     try {
         val mySession = call.sessions.get<MySession>()
                 ?: throw AuthorizationException("Could not find session cookie")
 
-        val subject = Subject.Builder().sessionId(mySession.id).buildSubject()
-        if (!subject.isAuthenticated) throw AuthorizationException("Restored session is not authenticated")
+        val subject = Subject.Builder()
+                .sessionId(mySession.id)
+                .buildSubject()
 
-        subject.checkPermission(permissionRequired)
-        subject.session.touch() // Refresh session
+        // Recreate Subject with additional rolePrincipal
+        val rolePrincipal = RolePrincipal(mySession.roleId)
+
+        val subjectContext = DefaultSubjectContext().apply {
+            session = subject.session
+            isAuthenticated = subject.isAuthenticated
+            principals = SimplePrincipalCollection(listOf(subject.principal, rolePrincipal), realm.name)
+        }
+        val subjectRecreated = DefaultSubjectFactory().createSubject(subjectContext)
+
+        if (!subjectRecreated.isAuthenticated)
+            throw AuthorizationException("Restored session is not authenticated")
+
+        subjectRecreated.checkPermission(permissionRequired)
+        subjectRecreated.session.touch() // Refresh session
         try {
             val result: Any? = allowed()
             if (result != null)

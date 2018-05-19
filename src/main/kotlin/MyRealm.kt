@@ -28,15 +28,29 @@ class MyRealm(private val subjectService: SubjectService) : AuthorizingRealm() {
 
     }
 
+
     override fun doGetAuthorizationInfo(principals: PrincipalCollection): AuthorizationInfo? {
-        val subjectId = principals.fromRealm(name).iterator().next() as Long
+        var subjectId: Long = -1L
+        var roleId: Long = -1L
+
+        for (principal in principals.fromRealm(name).iterator())
+            when (principal) {
+                is Long -> subjectId = principal
+                is RolePrincipal -> roleId = principal.roleId
+                is Any -> throw IllegalArgumentException("Could not handle this principal")
+            }
+
+        if(subjectId == -1L) throw IllegalArgumentException("Could not find required subjectId principal")
+        if(roleId == -1L) throw IllegalArgumentException("Could not find required roleId principal")
+
         val subject = subjectService.findById(subjectId)
+
         return if (subject != null) {
             val info = SimpleAuthorizationInfo()
-            subject.subjectRoles.forEach {
-                info.addRole(it.role.name)
-                info.addStringPermissions(it.role.permissions.map { it.permission })
-            }
+            val subjectRole = subject.subjectRoles.find { it.role.id == roleId } ?: return null
+            info.addRole(subjectRole.role.name)
+            info.addStringPermissions(subjectRole.role.permissions.map { it.permission })
+
             return info
         } else null
     }

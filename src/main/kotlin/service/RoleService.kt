@@ -1,6 +1,7 @@
 package service
 
 
+import Permission
 import data.rbac.role.Role
 import data.rbac.role.RoleDao
 import data.rbac.rolepermission.RolePermission
@@ -40,16 +41,25 @@ class RoleService(override val kodein: Kodein) : KodeinAware, Service<Role, Role
     fun setDefaultRoleFor(subject: Subject): Role {
         val defaultRole = createRole(
                 name = "subject_${subject.login}_${subject.id}",
-                description = "Subject login: ${subject.login} id: ${subject.id} role",
-                permissionsStrings = listOf("subjects:read:${subject.id}", "cars:read:*"))
+                description = "Default role for each subject, having access to read his data, read all cars, and create rent",
+                permissionsStrings = listOf(
+                        Permission.from(Permission.Domain.SUBJECT, Permission.Action.READ, subject.id),
+                        Permission.from(Permission.Domain.CAR, Permission.Action.READ),
+                        Permission.from(Permission.Domain.RENT, Permission.Action.CREATE)
+                )
+        )
+        addRoleToSubject(defaultRole, subject)
+        return defaultRole
 
+    }
+
+    fun addRoleToSubject(role: Role, subject: Subject) {
         SubjectRole().apply {
-            role = defaultRole
+            this.role = role
             this.subject = subject
         }.also {
             subjectRoleDao.create(it)
         }
-        return defaultRole
 
     }
 

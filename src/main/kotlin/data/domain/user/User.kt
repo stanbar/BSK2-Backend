@@ -15,7 +15,8 @@ class User {
     var id: Long = -1
 
     @DatabaseField(foreign = true, foreignAutoCreate = true, foreignAutoRefresh = true)
-    lateinit var subject: Subject // representation in RBAC database
+    lateinit var subject: Subject
+    // representation in RBAC database
 
     @Column(nullable = false)
     lateinit var PESEL: String
