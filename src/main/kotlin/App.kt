@@ -1,3 +1,4 @@
+
 import com.j256.ormlite.support.ConnectionSource
 import com.stasbar.Logger
 import exception.IllegalParameterException
@@ -8,6 +9,7 @@ import io.ktor.application.install
 import io.ktor.auth.*
 import io.ktor.features.ContentNegotiation
 import io.ktor.features.DefaultHeaders
+import io.ktor.features.HttpsRedirect
 import io.ktor.gson.gson
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
@@ -18,7 +20,10 @@ import io.ktor.response.respond
 import io.ktor.routing.Routing
 import io.ktor.routing.get
 import io.ktor.routing.post
+import io.ktor.server.engine.applicationEngineEnvironment
+import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
+import io.ktor.server.engine.sslConnector
 import io.ktor.server.netty.Netty
 import io.ktor.sessions.*
 import org.apache.shiro.SecurityUtils
@@ -34,6 +39,8 @@ import org.kodein.di.generic.instance
 import service.RoleService
 import service.SubjectService
 import service.UserService
+import java.io.File
+import java.security.KeyStore
 
 class IdPrincipal(val id: Long) : Principal
 class RolePrincipal(val roleId: Long) : Principal
@@ -44,7 +51,25 @@ fun main(args: Array<String>) {
     Utils.bootstrapDatabase(kodein)
     val securityManager: SecurityManager by kodein.instance()
     SecurityUtils.setSecurityManager(securityManager)
-    embeddedServer(Netty, 8080, watchPaths = listOf("AppKt"), module = Application::module).start()
+
+    val env = applicationEngineEnvironment {
+        module {
+            module()
+        }
+        connector {
+            host = "0.0.0.0"
+            port = 8080
+        }
+        sslConnector(keyStore = KeyStore.getInstance("JKS").apply { load(File("keystoreBSK2.jks").inputStream(), "Password123".toCharArray()) },
+                keyAlias = "bsk2",
+                keyStorePassword = { "Password123".toCharArray() },
+                privateKeyPassword = { "Password123".toCharArray() }) {
+            port = 8443
+            keyStorePath = File("keystoreBSK2.jks").absoluteFile
+        }
+
+    }
+    embeddedServer(Netty, env).start()
 
     Runtime.getRuntime().addShutdownHook(object : Thread() {
         override fun run() {
@@ -62,6 +87,9 @@ fun Application.module() {
         cookie<MySession>("SESSIONID")
     }
     install(DefaultHeaders)
+    install(HttpsRedirect) {
+        sslPort = 8443
+    }
     install(ContentNegotiation) {
         gson {
             setPrettyPrinting()

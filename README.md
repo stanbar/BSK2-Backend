@@ -15,9 +15,16 @@ $ ./gradlew run -q
 ```
 or separately build and then run 
 ```
-$ ./gradlew build
-$ java -jar build/libs/bsk2-service.jar 
+$ ./gradlew shadowJar
+$ java -jar build/libs/bsk2-server-all.jar 
 ```
+SSL is enabled by default, in order to generate keystore with Self-Signed Certificate you can use
+```
+$ ./generateKeystore.sh
+```
+or better use CA to sign it
+
+Now your server is serving on both `http://localhost:8080` and `https://localhost:8443`
 
 # Docs:
 ## POST /signup
