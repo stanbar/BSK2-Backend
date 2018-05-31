@@ -99,6 +99,7 @@ case $METHOD in
 		"signup")
 	curl -X POST -v \
 	http://localhost:8080/$METHOD \
+	-H "Accept: application/json" \
 	-H "Content-Type: application/x-www-form-urlencoded" \
 	-d "login=${USERNAME}&password=${PASSWORD}&firstName=${FIRSTNAME}&lastName=${LASTNAME}&PESEL=${PESEL}&driverLicence=${DRIVERLICENCE}"
 	;;
@@ -107,6 +108,7 @@ case $METHOD in
 	curl -X GET -v \
 	--basic --user $USERNAME:$PASSWORD \
 	http://localhost:8080/$METHOD \
+	-H "Accept: application/json" \
 	-H "Content-Type: application/x-www-form-urlencoded"
 	;;
 
@@ -114,18 +116,21 @@ case $METHOD in
 	curl -X POST -v \
 	--basic --user $USERNAME:$PASSWORD \
 	http://localhost:8080/$METHOD \
+	-H "Accept: text/html" \
 	-H "Content-Type: application/x-www-form-urlencoded" \
 	-d "roleId=${ROLEID}"
 	;;
 
     grand/*)
     curl -X GET -v \
+    -H "Accept: application/json" \
     http://localhost:8080/$METHOD
     ;;
 
 	*)
 	curl -X GET -v \
 	-b "SESSIONID=${COOKIEID}" \
+	-H "Accept: application/json" \
 	http://localhost:8080/$METHOD
 	;;
 esac

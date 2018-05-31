@@ -32,7 +32,7 @@
         </tr>
         <#items as role>
             <tr class="${role?item_cycle('one','two','three','four')}Row">
-                <td> <form action="/login.html" method="post">
+                <td> <form action="/login" method="post">
                     <button  name="roleId" value="${role.id}">Select</button>
                 </form>
                 </td>

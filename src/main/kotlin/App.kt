@@ -12,14 +12,14 @@ import io.ktor.features.DefaultHeaders
 import io.ktor.freemarker.FreeMarker
 import io.ktor.freemarker.FreeMarkerContent
 import io.ktor.gson.gson
-import io.ktor.html.respondHtmlTemplate
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.Parameters
-import io.ktor.request.receive
+import io.ktor.locations.Locations
 import io.ktor.request.receiveParameters
 import io.ktor.response.header
 import io.ktor.response.respond
 import io.ktor.routing.Routing
+import io.ktor.routing.accept
 import io.ktor.routing.get
 import io.ktor.routing.post
 import io.ktor.sessions.*
@@ -33,10 +33,8 @@ import org.apache.shiro.subject.SimplePrincipalCollection
 import org.apache.shiro.subject.Subject
 import org.apache.shiro.subject.support.DefaultSubjectContext
 import org.kodein.di.generic.instance
-import service.RoleService
-import service.SubjectService
+import routing.*
 import service.UserService
-import views.MulticolumnTemplate
 
 class IdPrincipal(val id: Long) : Principal
 class RolePrincipal(val roleId: Long) : Principal
@@ -59,6 +57,7 @@ fun Application.main() {
     install(ContentNegotiation) { gson { setPrettyPrinting() } }
     install(Sessions) { cookie<MySession>("SESSIONID") }
     install(FreeMarker) { templateLoader = ClassTemplateLoader(MyRealm::class.java.classLoader, "templates") }
+    install(Locations)
     install(Authentication) {
         basic("basic") {
             this.realm = realm.name
@@ -103,214 +102,120 @@ fun Application.main() {
 
     }
     install(Routing) {
+        index()
+        login()
+        signup()
+        users()
+        roles()
+        permissions()
 
         val userService: UserService by kodein.instance()
-        val subjectService: SubjectService by kodein.instance()
-
-        post("/signup") {
-            val post = call.receive<Parameters>()
-            val login = post["login"]
-            val firstName = post["firstName"]
-            val lastName = post["lastName"]
-            val driverLicence = post["driverLicence"]
-            val PESEL = post["PESEL"]
-            val password = post["password"]
-            if (login == null || login.isBlank()) {
-                call.response.status(HttpStatusCode.NonAuthoritativeInformation)
-                call.response.header("Reason", "login is null or blank")
-                return@post
-            } else if (password == null || password.isNullOrBlank()) {
-                call.response.status(HttpStatusCode.NonAuthoritativeInformation)
-                call.response.header("Reason", "password is null or blank")
-                return@post
-            } else if (firstName == null || firstName.isNullOrBlank()) {
-                call.response.status(HttpStatusCode.NonAuthoritativeInformation)
-                call.response.header("Reason", "firstName is null or blank")
-                return@post
-            } else if (lastName == null || lastName.isNullOrBlank()) {
-                call.response.status(HttpStatusCode.NonAuthoritativeInformation)
-                call.response.header("Reason", "lastName is null or blank")
-                return@post
-            } else if (driverLicence == null || driverLicence.isNullOrBlank()) {
-                call.response.status(HttpStatusCode.NonAuthoritativeInformation)
-                call.response.header("Reason", "driverLicence is null or blank")
-                return@post
-            } else if (PESEL == null || PESEL.isNullOrBlank()) {
-                call.response.status(HttpStatusCode.NonAuthoritativeInformation)
-                call.response.header("Reason", "PESEL is null or blank")
-                return@post
-            }
-
-
-
-            if (subjectService.findBy(SubjectService.Selector.LOGIN.value, login) != null)
-                call.respond(HttpStatusCode.Conflict, "Subject with this login is already created")
-            else {
-                val createdUser = userService.createUser(login, password, firstName, lastName, PESEL, driverLicence)
-                call.respond(HttpStatusCode.OK, createdUser)
-            }
-        }
         authenticate("basic") {
-            get("/myRoles.ftl") {
-                val currentSubjectId = call.principal<IdPrincipal>()?.id
+            accept(ContentType.Text.Html) {
+                get("/myRoles") {
+                    val currentSubjectId = call.principal<IdPrincipal>()?.id
 
-                if (currentSubjectId != null) {
-                    val user = userService.findById(currentSubjectId)
-                    if (user != null) {
-                        val response = user.subject.subjectRoles.map {
-                            val role = it.role
-                            hashMapOf("id" to role.id, "name" to role.name, "description" to role.description)
+                    if (currentSubjectId != null) {
+                        val user = userService.findById(currentSubjectId)
+                        if (user != null) {
+                            val roles = user.subject.subjectRoles.map {
+                                val role = it.role
+                                hashMapOf("id" to role.id, "name" to role.name, "description" to role.description)
+                            }
+
+                            call.respond(FreeMarkerContent("myRoles.ftl", mapOf("login" to user.subject.login, "roles" to roles)))
+                        } else {
+                            call.respond(FreeMarkerContent("error.ftl", mapOf("error" to "Could not find subject after successful login")))
+
                         }
-                        call.respond(HttpStatusCode.OK, response)
                     } else
-                        call.respond(HttpStatusCode.InternalServerError, "Could not find subject after successful login")
-                } else
-                    call.respond(HttpStatusCode.InternalServerError, "Subject's principal was null or not Long")
-            }
-            get("/myRoles.html") {
-                val currentSubjectId = call.principal<IdPrincipal>()?.id
-
-                if (currentSubjectId != null) {
-                    val user = userService.findById(currentSubjectId)
-                    if (user != null) {
-                        val roles = user.subject.subjectRoles.map {
-                            val role = it.role
-                            hashMapOf("id" to role.id, "name" to role.name, "description" to role.description)
-                        }
-
-                        call.respond(FreeMarkerContent("myRoles.ftl", mapOf("login" to user.subject.login, "roles" to roles)))
-                    } else {
-                        call.respond(FreeMarkerContent("error.ftl", mapOf("error" to "Could not find subject after successful login")))
-
+                        call.respond(HttpStatusCode.InternalServerError, "Subject's principal was null or not Long")
+                }
+                post("/login") {
+                    val parameters = call.receiveParameters()
+                    val selectedRoleId = parameters["roleId"]?.toLongOrNull()
+                    if (selectedRoleId == null) {
+                        call.response.status(HttpStatusCode.NonAuthoritativeInformation)
+                        call.response.header("Reason", "roleId is null or blank")
+                        return@post
                     }
-                } else
-                    call.respond(HttpStatusCode.InternalServerError, "Subject's principal was null or not Long")
-            }
 
-            post("/login") {
-                val parameters = call.receiveParameters()
-                val selectedRoleId = parameters["roleId"]?.toLongOrNull()
-                if (selectedRoleId == null) {
-                    call.response.status(HttpStatusCode.NonAuthoritativeInformation)
-                    call.response.header("Reason", "roleId is null or blank")
-                    return@post
-                }
+                    val currentSubjectId = call.principal<IdPrincipal>()?.id
+                    if (currentSubjectId != null) {
+                        val user = userService.findById(currentSubjectId)
+                        if (user != null) {
+                            val currentRole = user.subject.subjectRoles.find { it.role.id == selectedRoleId }
+                            if (currentRole != null) {
+                                val sessionId = SecurityUtils.getSubject().session.id as String
+                                val mySession = MySession(sessionId, selectedRoleId)
 
-                val currentSubjectId = call.principal<IdPrincipal>()?.id
-                if (currentSubjectId != null) {
-                    val user = userService.findById(currentSubjectId)
-                    if (user != null) {
-                        val currentRole = user.subject.subjectRoles.find { it.role.id == selectedRoleId }
-                        if (currentRole != null) {
-                            val sessionId = SecurityUtils.getSubject().session.id as String
-                            val mySession = MySession(sessionId, selectedRoleId)
+                                call.sessions.set(mySession)
 
-                            call.sessions.set(mySession)
+                                //Prevent from exposing all user roles
+                                user.subject.subjectRoles = user.subject.subjectRoles.filter { it.role.id == selectedRoleId }
+                                call.respond(FreeMarkerContent("user.ftl", mapOf("user" to user)))
+                            } else {
+                                call.respond(FreeMarkerContent("error.ftl", mapOf("error" to "You don't have role with id \"$selectedRoleId\"")))
+                            }
 
-                            //Prevent from exposing all user roles
-                            user.subject.subjectRoles = user.subject.subjectRoles.filter { it.role.id == selectedRoleId }
-                            call.respond(HttpStatusCode.OK, user)
-                        } else {
-                            call.respond(HttpStatusCode.Unauthorized, "You don't have role with id \"$selectedRoleId\"")
-                        }
-
+                        } else
+                            call.respond(HttpStatusCode.InternalServerError, "Could not find subject after successful login")
                     } else
-                        call.respond(HttpStatusCode.InternalServerError, "Could not find subject after successful login")
-                } else
-                    call.respond(HttpStatusCode.InternalServerError, "Subject's principal was null or not Long")
-            }
-
-
-            post("/login.html") {
-                val parameters = call.receiveParameters()
-                val selectedRoleId = parameters["roleId"]?.toLongOrNull()
-                if (selectedRoleId == null) {
-                    call.response.status(HttpStatusCode.NonAuthoritativeInformation)
-                    call.response.header("Reason", "roleId is null or blank")
-                    return@post
+                        call.respond(HttpStatusCode.InternalServerError, "Subject's principal was null or not Long")
                 }
+            }
+            accept(ContentType.Application.Json) {
+                get("/myRoles") {
+                    val currentSubjectId = call.principal<IdPrincipal>()?.id
 
-                val currentSubjectId = call.principal<IdPrincipal>()?.id
-                if (currentSubjectId != null) {
-                    val user = userService.findById(currentSubjectId)
-                    if (user != null) {
-                        val currentRole = user.subject.subjectRoles.find { it.role.id == selectedRoleId }
-                        if (currentRole != null) {
-                            val sessionId = SecurityUtils.getSubject().session.id as String
-                            val mySession = MySession(sessionId, selectedRoleId)
-
-                            call.sessions.set(mySession)
-
-                            //Prevent from exposing all user roles
-                            user.subject.subjectRoles = user.subject.subjectRoles.filter { it.role.id == selectedRoleId }
-                            call.respond(HttpStatusCode.OK, user)
-                        } else {
-                            call.respond(HttpStatusCode.Unauthorized, "You don't have role with id \"$selectedRoleId\"")
-                        }
-
+                    if (currentSubjectId != null) {
+                        val user = userService.findById(currentSubjectId)
+                        if (user != null) {
+                            val response = user.subject.subjectRoles.map {
+                                val role = it.role
+                                hashMapOf("id" to role.id, "name" to role.name, "description" to role.description)
+                            }
+                            call.respond(HttpStatusCode.OK, response)
+                        } else
+                            call.respond(HttpStatusCode.InternalServerError, "Could not find subject after successful login")
                     } else
-                        call.respond(HttpStatusCode.InternalServerError, "Could not find subject after successful login")
-                } else
-                    call.respond(HttpStatusCode.InternalServerError, "Subject's principal was null or not Long")
-            }
-        }
-
-
-        get("/users") {
-            validateSession(call, "user:read:*") {
-                subjectService.getAll()
-            }
-        }
-
-        get("/users/{id}") {
-            try {
-                val id = call.parameters["id"]!!.toLong()
-                validateSession(call, "user:read:$id") {
-                    userService.findById(id)
+                        call.respond(HttpStatusCode.InternalServerError, "Subject's principal was null or not Long")
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                throw IllegalParameterException(call.parameters["id"])
-            }
+                post("/login") {
+                    val parameters = call.receiveParameters()
+                    val selectedRoleId = parameters["roleId"]?.toLongOrNull()
+                    if (selectedRoleId == null) {
+                        call.response.status(HttpStatusCode.NonAuthoritativeInformation)
+                        call.response.header("Reason", "roleId is null or blank")
+                        return@post
+                    }
 
-        }
+                    val currentSubjectId = call.principal<IdPrincipal>()?.id
+                    if (currentSubjectId != null) {
+                        val user = userService.findById(currentSubjectId)
+                        if (user != null) {
+                            val currentRole = user.subject.subjectRoles.find { it.role.id == selectedRoleId }
+                            if (currentRole != null) {
+                                val sessionId = SecurityUtils.getSubject().session.id as String
+                                val mySession = MySession(sessionId, selectedRoleId)
 
-        get("/roles") {
-            validateSession(call, "role:read:*") {
-                val roleService: RoleService by kodein.instance()
-                roleService.getAll()
-            }
-        }
-        get("/") {
-            call.respondHtmlTemplate(MulticolumnTemplate()) {
-                column1 {
-                    +"Authors"
+                                call.sessions.set(mySession)
+
+                                //Prevent from exposing all user roles
+                                user.subject.subjectRoles = user.subject.subjectRoles.filter { it.role.id == selectedRoleId }
+                                call.respond(HttpStatusCode.OK, user)
+                            } else {
+                                call.respond(HttpStatusCode.Unauthorized, "You don't have role with id \"$selectedRoleId\"")
+                            }
+
+                        } else
+                            call.respond(HttpStatusCode.InternalServerError, "Could not find subject after successful login")
+                    } else
+                        call.respond(HttpStatusCode.InternalServerError, "Subject's principal was null or not Long")
                 }
-                column2 {
-                    +"Stanisław Barański"
-                }
+
             }
         }
-
-
-        //TODO remove it, security leak
-        get("/grand/{subjectId}/{roleId}") {
-            try {
-                val subjectId = call.parameters["subjectId"]!!.toLong()
-                val roleId = call.parameters["roleId"]!!.toLong()
-
-                val roleService: RoleService by kodein.instance()
-                val role = roleService.findById(roleId)
-                val subject = subjectService.findById(subjectId)
-                roleService.addRoleToSubject(role!!, subject!!)
-                call.respond(subjectService.findById(subjectId)!!)
-
-            } catch (e: Exception) {
-                throw IllegalParameterException("${call.parameters["subjectId"]} and ${call.parameters["roleId"]}")
-            }
-
-        }
-
     }
 }
 
