@@ -1,7 +1,7 @@
-
 import com.j256.ormlite.support.ConnectionSource
 import com.stasbar.Logger
 import exception.IllegalParameterException
+import freemarker.cache.ClassTemplateLoader
 import io.ktor.application.Application
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
@@ -9,8 +9,10 @@ import io.ktor.application.install
 import io.ktor.auth.*
 import io.ktor.features.ContentNegotiation
 import io.ktor.features.DefaultHeaders
-import io.ktor.features.HttpsRedirect
+import io.ktor.freemarker.FreeMarker
+import io.ktor.freemarker.FreeMarkerContent
 import io.ktor.gson.gson
+import io.ktor.html.respondHtmlTemplate
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
 import io.ktor.request.receive
@@ -20,11 +22,6 @@ import io.ktor.response.respond
 import io.ktor.routing.Routing
 import io.ktor.routing.get
 import io.ktor.routing.post
-import io.ktor.server.engine.applicationEngineEnvironment
-import io.ktor.server.engine.connector
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.engine.sslConnector
-import io.ktor.server.netty.Netty
 import io.ktor.sessions.*
 import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authc.*
@@ -39,63 +36,29 @@ import org.kodein.di.generic.instance
 import service.RoleService
 import service.SubjectService
 import service.UserService
-import java.io.File
-import java.security.KeyStore
+import views.MulticolumnTemplate
 
 class IdPrincipal(val id: Long) : Principal
 class RolePrincipal(val roleId: Long) : Principal
 class MySession(val id: String, val roleId: Long)
 
-fun main(args: Array<String>) {
-    // Initial Database bootstrap
-    Utils.bootstrapDatabase(kodein)
-    val securityManager: SecurityManager by kodein.instance()
-    SecurityUtils.setSecurityManager(securityManager)
 
-    val env = applicationEngineEnvironment {
-        module {
-            module()
-        }
-        connector {
-            host = "0.0.0.0"
-            port = 8080
-        }
-        sslConnector(keyStore = KeyStore.getInstance("JKS").apply { load(File("keystoreBSK2.jks").inputStream(), "Password123".toCharArray()) },
-                keyAlias = "bsk2",
-                keyStorePassword = { "Password123".toCharArray() },
-                privateKeyPassword = { "Password123".toCharArray() }) {
-            port = 8443
-            keyStorePath = File("keystoreBSK2.jks").absoluteFile
-        }
-
-    }
-    embeddedServer(Netty, env).start()
-
+fun Application.main() {
     Runtime.getRuntime().addShutdownHook(object : Thread() {
         override fun run() {
             val connectionSource: ConnectionSource by kodein.instance()
             connectionSource.close()
         }
     })
-}
-
-
-fun Application.module() {
     val realm: AuthorizingRealm by kodein.instance()
+    val securityManager: SecurityManager by kodein.instance()
+    SecurityUtils.setSecurityManager(securityManager)
+    Utils.bootstrapDatabase(kodein)
 
-    install(Sessions) {
-        cookie<MySession>("SESSIONID")
-    }
     install(DefaultHeaders)
-    install(HttpsRedirect) {
-        sslPort = 8443
-    }
-    install(ContentNegotiation) {
-        gson {
-            setPrettyPrinting()
-
-        }
-    }
+    install(ContentNegotiation) { gson { setPrettyPrinting() } }
+    install(Sessions) { cookie<MySession>("SESSIONID") }
+    install(FreeMarker) { templateLoader = ClassTemplateLoader(MyRealm::class.java.classLoader, "templates") }
     install(Authentication) {
         basic("basic") {
             this.realm = realm.name
@@ -188,7 +151,7 @@ fun Application.module() {
             }
         }
         authenticate("basic") {
-            get("/myRoles") {
+            get("/myRoles.ftl") {
                 val currentSubjectId = call.principal<IdPrincipal>()?.id
 
                 if (currentSubjectId != null) {
@@ -204,8 +167,61 @@ fun Application.module() {
                 } else
                     call.respond(HttpStatusCode.InternalServerError, "Subject's principal was null or not Long")
             }
+            get("/myRoles.html") {
+                val currentSubjectId = call.principal<IdPrincipal>()?.id
+
+                if (currentSubjectId != null) {
+                    val user = userService.findById(currentSubjectId)
+                    if (user != null) {
+                        val roles = user.subject.subjectRoles.map {
+                            val role = it.role
+                            hashMapOf("id" to role.id, "name" to role.name, "description" to role.description)
+                        }
+
+                        call.respond(FreeMarkerContent("myRoles.ftl", mapOf("login" to user.subject.login, "roles" to roles)))
+                    } else {
+                        call.respond(FreeMarkerContent("error.ftl", mapOf("error" to "Could not find subject after successful login")))
+
+                    }
+                } else
+                    call.respond(HttpStatusCode.InternalServerError, "Subject's principal was null or not Long")
+            }
 
             post("/login") {
+                val parameters = call.receiveParameters()
+                val selectedRoleId = parameters["roleId"]?.toLongOrNull()
+                if (selectedRoleId == null) {
+                    call.response.status(HttpStatusCode.NonAuthoritativeInformation)
+                    call.response.header("Reason", "roleId is null or blank")
+                    return@post
+                }
+
+                val currentSubjectId = call.principal<IdPrincipal>()?.id
+                if (currentSubjectId != null) {
+                    val user = userService.findById(currentSubjectId)
+                    if (user != null) {
+                        val currentRole = user.subject.subjectRoles.find { it.role.id == selectedRoleId }
+                        if (currentRole != null) {
+                            val sessionId = SecurityUtils.getSubject().session.id as String
+                            val mySession = MySession(sessionId, selectedRoleId)
+
+                            call.sessions.set(mySession)
+
+                            //Prevent from exposing all user roles
+                            user.subject.subjectRoles = user.subject.subjectRoles.filter { it.role.id == selectedRoleId }
+                            call.respond(HttpStatusCode.OK, user)
+                        } else {
+                            call.respond(HttpStatusCode.Unauthorized, "You don't have role with id \"$selectedRoleId\"")
+                        }
+
+                    } else
+                        call.respond(HttpStatusCode.InternalServerError, "Could not find subject after successful login")
+                } else
+                    call.respond(HttpStatusCode.InternalServerError, "Subject's principal was null or not Long")
+            }
+
+
+            post("/login.html") {
                 val parameters = call.receiveParameters()
                 val selectedRoleId = parameters["roleId"]?.toLongOrNull()
                 if (selectedRoleId == null) {
@@ -266,8 +282,16 @@ fun Application.module() {
             }
         }
         get("/") {
-            call.respond(HttpStatusCode.OK, "BSK2")
+            call.respondHtmlTemplate(MulticolumnTemplate()) {
+                column1 {
+                    +"Authors"
+                }
+                column2 {
+                    +"Stanisław Barański"
+                }
+            }
         }
+
 
         //TODO remove it, security leak
         get("/grand/{subjectId}/{roleId}") {
