@@ -1,5 +1,7 @@
 package routing
 
+import IdPrincipal
+import MySession
 import io.ktor.application.call
 import io.ktor.auth.authenticate
 import io.ktor.auth.principal
@@ -7,8 +9,8 @@ import io.ktor.freemarker.FreeMarkerContent
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.request.receiveParameters
-import io.ktor.response.header
 import io.ktor.response.respond
+import io.ktor.response.respondRedirect
 import io.ktor.routing.Route
 import io.ktor.routing.accept
 import io.ktor.routing.get
@@ -16,8 +18,6 @@ import io.ktor.routing.post
 import io.ktor.sessions.sessions
 import io.ktor.sessions.set
 import kodein
-import MySession
-import IdPrincipal
 import org.apache.shiro.SecurityUtils
 import org.kodein.di.generic.instance
 import service.UserService
@@ -50,8 +50,7 @@ fun Route.login() {
                 val parameters = call.receiveParameters()
                 val selectedRoleId = parameters["roleId"]?.toLongOrNull()
                 if (selectedRoleId == null) {
-                    call.response.status(HttpStatusCode.NonAuthoritativeInformation)
-                    call.response.header("Reason", "roleId is null or blank")
+                    call.respondRedirect("/myRoles",false)
                     return@post
                 }
 
@@ -100,8 +99,7 @@ fun Route.login() {
                 val parameters = call.receiveParameters()
                 val selectedRoleId = parameters["roleId"]?.toLongOrNull()
                 if (selectedRoleId == null) {
-                    call.response.status(HttpStatusCode.NonAuthoritativeInformation)
-                    call.response.header("Reason", "roleId is null or blank")
+                    call.respondRedirect("/myRoles",false)
                     return@post
                 }
 

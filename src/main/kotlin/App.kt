@@ -9,6 +9,7 @@ import io.ktor.application.install
 import io.ktor.auth.Authentication
 import io.ktor.auth.Principal
 import io.ktor.auth.basic
+import io.ktor.features.CORS
 import io.ktor.features.ContentNegotiation
 import io.ktor.features.DefaultHeaders
 import io.ktor.freemarker.FreeMarker
@@ -55,6 +56,7 @@ fun Application.main() {
     install(Sessions) { cookie<MySession>("SESSIONID") }
     install(FreeMarker) { templateLoader = ClassTemplateLoader(MyRealm::class.java.classLoader, "templates") }
     install(Locations)
+    install(CORS)
     install(Authentication) {
         basic("basic") {
             this.realm = realm.name

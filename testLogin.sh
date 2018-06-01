@@ -76,9 +76,6 @@ fi
 if [ -z "${USERNAME}" ]; then
 	USERNAME="admin"
 fi
-if [ -z "${ROLEID}" ]; then
-	ROLEID="1"
-fi
 if [ -z "${PASSWORD}" ]; then
 	PASSWORD="admin"
 fi
@@ -113,10 +110,10 @@ case $METHOD in
 	;;
 
 	"login")
-	curl -X POST -v \
+	curl -X POST -v -L \
 	--basic --user $USERNAME:$PASSWORD \
 	http://localhost:8080/$METHOD \
-	-H "Accept: text/html" \
+	-H "Accept: application/json" \
 	-H "Content-Type: application/x-www-form-urlencoded" \
 	-d "roleId=${ROLEID}"
 	;;
