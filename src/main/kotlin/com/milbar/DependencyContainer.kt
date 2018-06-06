@@ -56,12 +56,15 @@ val rbacModule = Kodein.Module {
 }
 val shiroModule = Kodein.Module {
     bind<AuthorizingRealm>() with singleton { MyRealm(instance()) }
-    bind<SessionManager>() with singleton { DefaultSessionManager() }
+    bind<SessionManager>() with singleton { DefaultSessionManager().apply {
+        globalSessionTimeout = 36000000
+    } }
     bind<SecurityManager>() with singleton {
         DefaultSecurityManager(instance<AuthorizingRealm>()).apply {
             val sessionManager: SessionManager by kodein.instance()
             this.sessionManager = sessionManager
         }
+
     }
 }
 

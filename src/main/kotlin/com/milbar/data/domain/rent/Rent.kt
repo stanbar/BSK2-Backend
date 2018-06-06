@@ -21,8 +21,8 @@ class Rent {
     lateinit var car: Car
 
     @DatabaseField
-    lateinit var startDane: Date
+    lateinit var startDate: Date
 
     @DatabaseField
-    lateinit var endDane: Date
+    lateinit var endDate: Date
 }

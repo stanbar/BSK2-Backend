@@ -1,7 +1,7 @@
 package com.milbar
 import com.j256.ormlite.support.ConnectionSource
-import com.stasbar.Logger
 import com.milbar.exception.IllegalParameterException
+import com.stasbar.Logger
 import freemarker.cache.ClassTemplateLoader
 import io.ktor.application.Application
 import io.ktor.application.ApplicationCall
@@ -110,7 +110,6 @@ fun Application.main() {
 
     }
     install(Routing) {
-        index()
         login()
         signup()
         users()

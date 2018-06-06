@@ -1,4 +1,6 @@
 # Server BSK 2
+This is backend part for 
+[BSK2-Frontend](https://github.com/stasbar/BSK2-Frontend)
 
 ### Technologies
 - **Ktor** - http server framework
@@ -7,6 +9,7 @@
 - **SQLite** - lightweight persistence layer
 - **ORMLite** - lightweight ORM mapper
 
+ 
 ### How to run
 
 You can run the service simply by 
