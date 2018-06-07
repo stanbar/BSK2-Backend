@@ -10,4 +10,5 @@ abstract class Service<T, out D : Dao<T, Long>> {
     fun findBy(selector: String, value: String): T? = dao.queryForEq(selector, value).firstOrNull()
 
     fun getAll(): List<T> = dao.queryForAll()
+
 }

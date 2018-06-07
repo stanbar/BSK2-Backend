@@ -19,10 +19,7 @@ import com.milbar.data.rbac.subject.SubjectDao
 import com.milbar.data.rbac.subject.SubjectDaoImpl
 import com.milbar.data.rbac.subject_role.SubjectRolesDao
 import com.milbar.data.rbac.subject_role.SubjectRolesDaoImpl
-import com.milbar.service.MechanicService
-import com.milbar.service.RoleService
-import com.milbar.service.SubjectService
-import com.milbar.service.UserService
+import com.milbar.service.*
 import org.apache.shiro.mgt.DefaultSecurityManager
 import org.apache.shiro.mgt.SecurityManager
 import org.apache.shiro.realm.AuthorizingRealm
@@ -78,4 +75,7 @@ val kodein = Kodein {
     bind<UserService>() with singleton { UserService(kodein) }
     bind<SubjectService>() with singleton { SubjectService(kodein) }
     bind<RoleService>() with singleton { RoleService(kodein) }
+    bind<CarService>() with singleton { CarService(kodein) }
+    bind<RentService>() with singleton { RentService(kodein) }
+    bind<RepairService>() with singleton { RepairService(kodein) }
 }

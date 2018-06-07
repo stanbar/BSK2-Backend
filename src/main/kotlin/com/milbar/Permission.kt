@@ -4,7 +4,7 @@ object Permission {
             listOf(domain.name.toLowerCase(), action.value.toLowerCase(), instance.toString()).joinToString(":")
 
     enum class Domain {
-        USER, ROLE, SUBJECT, CAR, RENT, REPAIR
+        USER, ROLE, SUBJECT, CAR, RENT, REPAIR, MECHANIC
     }
 
     enum class Action(val value: String, val description: String) {

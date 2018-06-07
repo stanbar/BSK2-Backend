@@ -1,4 +1,5 @@
 package com.milbar
+
 import com.j256.ormlite.support.ConnectionSource
 import com.j256.ormlite.table.TableUtils
 import com.milbar.data.domain.car.Car
@@ -10,9 +11,9 @@ import com.milbar.data.rbac.role.Role
 import com.milbar.data.rbac.rolepermission.RolePermission
 import com.milbar.data.rbac.subject.Subject
 import com.milbar.data.rbac.subject_role.SubjectRole
+import com.milbar.service.RoleService
 import org.kodein.di.Kodein
 import org.kodein.di.generic.instance
-import com.milbar.service.RoleService
 
 object Utils {
     fun bootstrapDatabase(kodein: Kodein) {
@@ -38,20 +39,25 @@ object Utils {
     fun createDefaultRole() {
         val roleService: RoleService by kodein.instance()
 
-        roleService.createRole("admin", "Access to read and update whole domain database",
+        roleService.createRole("admin", "Access to read and modify whole domain database nad read rbac DB",
                 listOf(
                         Permission.from(Permission.Domain.USER, Permission.Action.ALL),
                         Permission.from(Permission.Domain.CAR, Permission.Action.ALL),
                         Permission.from(Permission.Domain.RENT, Permission.Action.ALL),
-                        Permission.from(Permission.Domain.REPAIR, Permission.Action.ALL)
+                        Permission.from(Permission.Domain.REPAIR, Permission.Action.ALL),
+                        Permission.from(Permission.Domain.MECHANIC, Permission.Action.ALL),
+
+                        Permission.from(Permission.Domain.ROLE, Permission.Action.READ),
+                        Permission.from(Permission.Domain.SUBJECT, Permission.Action.READ)
                 ))
 
-        roleService.createRole("moderator", "Access to read and update users and cars",
+        roleService.createRole("moderator", "Access to read all domain DB and modify users and cars",
                 listOf(
-                        Permission.from(Permission.Domain.USER, Permission.Action.READ),
-                        Permission.from(Permission.Domain.USER, Permission.Action.UPDATE),
-                        Permission.from(Permission.Domain.CAR, Permission.Action.READ),
-                        Permission.from(Permission.Domain.CAR, Permission.Action.UPDATE)
+                        Permission.from(Permission.Domain.USER, Permission.Action.ALL),
+                        Permission.from(Permission.Domain.CAR, Permission.Action.ALL),
+                        Permission.from(Permission.Domain.RENT, Permission.Action.READ),
+                        Permission.from(Permission.Domain.REPAIR, Permission.Action.READ),
+                        Permission.from(Permission.Domain.MECHANIC, Permission.Action.READ)
                 )
         )
     }

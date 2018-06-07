@@ -19,10 +19,7 @@ import io.ktor.locations.Locations
 import io.ktor.request.path
 import io.ktor.response.respond
 import io.ktor.routing.Routing
-import io.ktor.sessions.Sessions
-import io.ktor.sessions.cookie
-import io.ktor.sessions.get
-import io.ktor.sessions.sessions
+import io.ktor.sessions.*
 import org.apache.shiro.SecurityUtils
 import org.apache.shiro.authc.*
 import org.apache.shiro.authz.AuthorizationException
@@ -62,6 +59,9 @@ fun Application.main() {
         level = Level.INFO
         filter { call -> call.request.path().startsWith("/login") }
         filter { call -> call.request.path().startsWith("/myRoles") }
+        filter { call -> call.request.path().startsWith("/logout") }
+        filter { call -> call.request.path().startsWith("/roles") }
+        filter { call -> call.request.path().startsWith("/signup") }
     }
     install(Sessions) { cookie<MySession>("SESSIONID") }
     install(FreeMarker) { templateLoader = ClassTemplateLoader(MyRealm::class.java.classLoader, "templates") }
@@ -73,6 +73,7 @@ fun Application.main() {
             validate { credentials ->
                 Logger.d(credentials)
                 if (!SecurityUtils.getSubject().isAuthenticated) {
+                    Logger.d("User is not authenticated will try to login him")
                     val token = UsernamePasswordToken(credentials.name, credentials.password)
                     token.isRememberMe = true
                     try {
@@ -110,10 +111,14 @@ fun Application.main() {
 
     }
     install(Routing) {
-        login()
         signup()
+        login()
         users()
         roles()
+        rents()
+        repairs()
+        cars()
+        mechanics()
         permissions()
     }
 }
@@ -160,9 +165,33 @@ suspend fun validateSession(call: ApplicationCall, permissionRequired: String, a
         call.respond(HttpStatusCode.Unauthorized, e)
     }
 }
+suspend fun logout(call: ApplicationCall){
+    val realm: AuthorizingRealm by kodein.instance()
+
+    val mySession = call.sessions.get<MySession>()
+            ?: throw AuthorizationException("Could not find session cookie")
+
+    val subject = Subject.Builder()
+            .sessionId(mySession.id)
+            .buildSubject()
+
+    // Recreate Subject with additional rolePrincipal
+    val rolePrincipal = RolePrincipal(mySession.roleId)
+
+    val subjectContext = DefaultSubjectContext().apply {
+        session = subject.session
+        isAuthenticated = subject.isAuthenticated
+        principals = SimplePrincipalCollection(listOf(subject.principal, rolePrincipal), realm.name)
+    }
+    val subjectRecreated = DefaultSubjectFactory().createSubject(subjectContext)
+    subjectRecreated.session.stop()
+    call.sessions.clear<MySession>()
+    call.respond(HttpStatusCode.OK,"Successfully logged out")
+}
 
 suspend fun handleError(errMsg: String, statusCode: HttpStatusCode, call: ApplicationCall? = null) {
     Logger.err(errMsg)
     call?.respond(statusCode, errMsg)
 }
+
 

@@ -2,11 +2,11 @@ package com.milbar.service
 
 import com.milbar.data.rbac.subject.Subject
 import com.milbar.data.rbac.subject.SubjectDao
+import com.milbar.service.exception.SubjectAlreadyExist
 import org.apache.shiro.crypto.hash.Sha256Hash
 import org.kodein.di.Kodein
 import org.kodein.di.KodeinAware
 import org.kodein.di.generic.instance
-import com.milbar.service.exception.SubjectAlreadyExist
 import java.sql.SQLException
 
 class SubjectService(override val kodein: Kodein) : KodeinAware, Service<Subject, SubjectDao>() {
@@ -15,7 +15,6 @@ class SubjectService(override val kodein: Kodein) : KodeinAware, Service<Subject
     }
 
     override val dao: SubjectDao by instance()
-    private val roleService: RoleService by instance()
 
     @Throws(SQLException::class, SubjectAlreadyExist::class)
     fun createSubject(login: String, password: String): Subject {

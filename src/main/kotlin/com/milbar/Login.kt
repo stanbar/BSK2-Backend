@@ -1,4 +1,5 @@
 package com.milbar
+
 import com.milbar.service.UserService
 import io.ktor.application.call
 import io.ktor.auth.authenticate
@@ -17,6 +18,9 @@ import org.kodein.di.generic.instance
 
 fun Route.login() {
     val userService: UserService by kodein.instance()
+    get("/logout") {
+        logout(call)
+    }
     authenticate("basic") {
 
         get("/myRoles") {
