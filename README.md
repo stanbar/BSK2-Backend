@@ -1,7 +1,13 @@
 # Server BSK 2
-This is backend part for 
+This is backend for 
 [BSK2-Frontend](https://github.com/stasbar/BSK2-Frontend)
 
+# DB Schema
+Domain
+![DomainSchema](https://i.imgur.com/YnEQDKt.png)
+
+RBAC
+![RBAC](https://i.imgur.com/QecQDUC.png)
 ### Technologies
 - **Ktor** - http server framework
 - **Kodein** - dependency retrieval container 
@@ -28,6 +34,8 @@ $ ./generateKeystore.sh
 or better use CA to sign it
 
 Now your server is serving on both `http://localhost:8080` and `https://localhost:8443`
+
+
 
 # Docs:
 ## POST /signup
