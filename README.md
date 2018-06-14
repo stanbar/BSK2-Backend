@@ -21,40 +21,84 @@ Database was bootstrapped with two base roles **admin** and **moderator**
 
 ```kotlin
 roleService.createRole("admin", "Access to read and modify whole domain database nad read rbac DB",
-        listOf(
-                Permission.from(USER, ALL),
-                Permission.from(CAR, ALL),
-                Permission.from(RENT, ALL),
-                Permission.from(REPAIR, ALL),
-                Permission.from(MECHANIC, ALL),
+    listOf(
+            Permission.from(USER, ALL),
+            Permission.from(CAR, ALL),
+            Permission.from(RENT, ALL),
+            Permission.from(REPAIR, ALL),
+            Permission.from(MECHANIC, ALL),
 
-                Permission.from(ROLE, READ),
-                Permission.from(SUBJECT, READ)
-        ))
+            Permission.from(ROLE, READ),
+            Permission.from(SUBJECT, READ)
+    ))
 
 roleService.createRole("moderator", "Access to read all domain DB and modify users and cars",
-        listOf(
-                Permission.from(USER, ALL),
-                Permission.from(CAR, ALL),
-                Permission.from(RENT, READ),
-                Permission.from(REPAIR, READ),
-                Permission.from(MECHANIC, READ)
-        )
+    listOf(
+            Permission.from(USER, ALL),
+            Permission.from(CAR, ALL),
+            Permission.from(RENT, READ),
+            Permission.from(REPAIR, READ),
+            Permission.from(MECHANIC, READ)
+    )
 )
 ```
 Every new User is assigned to default role with READ it's own content, READ all cars and CREATE Rent
 ```kotlin
-    val defaultRole = createRole(
-            name = "subject_${subject.login}_${subject.id}",
-            description = "Default role for each subject, having access to read his data, read all cars, and create rent",
-            permissionsStrings = listOf(
-                    Permission.from(SUBJECT, READ, subject.id),
-                    Permission.from(CAR, READ),
-                    Permission.from(RENT, CREATE)
-            )
-    )
+val defaultRole = createRole(
+        name = "subject_${subject.login}_${subject.id}",
+        description = "Default role for each subject, having access to read his data, read all cars, and create rent",
+        permissionsStrings = listOf(
+                Permission.from(SUBJECT, READ, subject.id),
+                Permission.from(CAR, READ),
+                Permission.from(RENT, CREATE)
+        )
+)
 ```
-For testing purposes **stasbar** account was added, with **admin** and **moderator** roles as well as it's own **subject_stasbar_1** default role
+For testing purposes **stasbar** and **patmil** user was added, with **admin** and **moderator** roles as well as it's own **subject_stasbar_1** default role
+
+```kotlin
+
+val stasbarUser = userService.createUser(login = "stasbar",
+        password = "hardpassword",
+        firstName = "Stanislaw",
+        lastName = "Baranski",
+        PESEL = "12345204412",
+        driverLicence = "fasdzxvc")
+roleService.addRoleToSubject(admin, stasbarUser.subject)
+roleService.addRoleToSubject(moderator, stasbarUser.subject)
+
+val patmilUser = userService.createUser(login = "patmil",
+        password = "hardpassword",
+        firstName = "Patryk",
+        lastName = "Milewski",
+        PESEL = "12345204412",
+        driverLicence = "fasdzxvc")
+roleService.addRoleToSubject(moderator,patmilUser.subject)
+
+```
+
+Two qualified mechanics were added
+```kotlin
+val janusz = mechanicService.createMechanic("januszGka", "Janusz", "Druciarski", "halinaObiad")
+val sebix = mechanicService.createMechanic("sebaGda", "Sebastian", "Trytyt", "bedziepanzadowolony")
+```
+
+some cars
+```kotlin
+carService.createCar("Lexus", "IS300", 1234.56)
+carService.createCar("VW", "Golf 4", 12.56)
+carService.createCar("VW", "Golf 3", 9.99)
+carService.createCar("Audi", "A4", 3.99)
+carService.createCar("Audi", "A5", 3.99)
+val acztery = carService.createCar("Fiat", "Panda", 3.99)
+val aczy = carService.createCar("Audi", "A3", 3.99)
+```
+
+and two of them need to be repaired
+```
+repairService.createRepair(aczy, janusz)
+repairService.createRepair(acztery, sebix)
+```
 
 ### How to run
 
