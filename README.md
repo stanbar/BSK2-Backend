@@ -2,18 +2,20 @@
 This is backend for 
 [BSK2-Frontend](https://github.com/stasbar/BSK2-Frontend)
 
+### Technologies
+- **Ktor** - http server framework
+- **Kodein** - dependency retrieval container
+- **Shiro** - RBAC security model
+- **SQLite** - lightweight persistence layer
+- **ORMLite** - lightweight ORM mapper
+
 # DB Schema
 Domain
 ![DomainSchema](https://i.imgur.com/YnEQDKt.png)
 
 RBAC
 ![RBAC](https://i.imgur.com/QecQDUC.png)
-### Technologies
-- **Ktor** - http server framework
-- **Kodein** - dependency retrieval container 
-- **Shiro** - RBAC security model  
-- **SQLite** - lightweight persistence layer
-- **ORMLite** - lightweight ORM mapper
+
 
 Database was bootstrapped with two base roles **admin** and **moderator**
 
