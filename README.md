@@ -15,7 +15,45 @@ RBAC
 - **SQLite** - lightweight persistence layer
 - **ORMLite** - lightweight ORM mapper
 
- 
+Database was bootstrapped with two base roles **admin** and **moderator**
+
+```kotlin
+roleService.createRole("admin", "Access to read and modify whole domain database nad read rbac DB",
+        listOf(
+                Permission.from(USER, ALL),
+                Permission.from(CAR, ALL),
+                Permission.from(RENT, ALL),
+                Permission.from(REPAIR, ALL),
+                Permission.from(MECHANIC, ALL),
+
+                Permission.from(ROLE, READ),
+                Permission.from(SUBJECT, READ)
+        ))
+
+roleService.createRole("moderator", "Access to read all domain DB and modify users and cars",
+        listOf(
+                Permission.from(USER, ALL),
+                Permission.from(CAR, ALL),
+                Permission.from(RENT, READ),
+                Permission.from(REPAIR, READ),
+                Permission.from(MECHANIC, READ)
+        )
+)
+```
+Every new User is assigned to default role with READ it's own content, READ all cars and CREATE Rent
+```kotlin
+    val defaultRole = createRole(
+            name = "subject_${subject.login}_${subject.id}",
+            description = "Default role for each subject, having access to read his data, read all cars, and create rent",
+            permissionsStrings = listOf(
+                    Permission.from(SUBJECT, READ, subject.id),
+                    Permission.from(CAR, READ),
+                    Permission.from(RENT, CREATE)
+            )
+    )
+```
+For testing purposes **stasbar** account was added, with **admin** and **moderator** roles as well as it's own **subject_stasbar_1** default role
+
 ### How to run
 
 You can run the service simply by 
@@ -37,7 +75,7 @@ Now your server is serving on both `http://localhost:8080` and `https://localhos
 
 
 
-# Docs:
+# REST API:
 ## POST /signup
 
 - `./testLogin.sh signup <login> <password>`
@@ -153,18 +191,10 @@ You will also get cookie for next requests
           "name": "subject_stasbar_1",
           "description": "Default role for each subject, having access to read his data, read all cars, and create rent",
           "permissions": [
-            {
-              "permission": "subject:read:1"
-            },
-            {
-              "permission": "car:read:*"
-            },
-            {
-              "permission": "rent:create:*"
-            },
-            {
-              "permission": "user:read:1"
-            }
+            {"permission": "subject:read:1"},
+            {"permission": "car:read:*"},
+            {"permission": "rent:create:*"},
+            {"permission": "user:read:1"}
           ]
         }
       },
@@ -174,18 +204,10 @@ You will also get cookie for next requests
           "name": "admin",
           "description": "Access to read and update whole domain database",
           "permissions": [
-            {
-              "permission": "user:*:*"
-            },
-            {
-              "permission": "car:*:*"
-            },
-            {
-              "permission": "rent:*:*"
-            },
-            {
-              "permission": "repair:*:*"
-            }
+            {"permission": "user:*:*"},
+            {"permission": "car:*:*"},
+            {"permission": "rent:*:*"},
+            {"permission": "repair:*:*"}
           ]
         }
       },
@@ -195,18 +217,10 @@ You will also get cookie for next requests
           "name": "moderator",
           "description": "Access to read and update users and cars",
           "permissions": [
-            {
-              "permission": "user:read:*"
-            },
-            {
-              "permission": "user:update:*"
-            },
-            {
-              "permission": "car:read:*"
-            },
-            {
-              "permission": "car:update:*"
-            }
+            {"permission": "user:read:*"},
+            {"permission": "user:update:*"},
+            {"permission": "car:read:*"},
+            {"permission": "car:update:*"}
           ]
         }
       }
@@ -218,3 +232,54 @@ You will also get cookie for next requests
   "driverLicence": "673476254765"
 }
 ```
+
+#### GET /cars/{id}
+Require *car:read* permission
+Return car of ***{id}*** or whole list if not specified
+
+#### GET /mechanics/{id}
+Require *mechanic:read* permission
+Return mechanic of ***{id}*** or whole list if not specified
+
+#### GET /rents/{id}
+Require *rent:read* permission
+Return rent of ***{id}*** or whole list if not specified
+
+#### POST /rents
+Require *rent:write* permission
+Create rent for specific car and peroid of time
+required data
+```typescript
+{
+    userId: string,
+    carId: string,
+    startDate: string,
+    endDate: string
+}
+```
+
+#### GET /repairs/{id}
+Require *repair:read* permission
+Return repair of ***{id}*** or whole list if not specified
+
+#### POST /repairs/{id}
+Require *repair:write* permission
+Create repair for specific car
+required data
+```typescript
+{
+    mechanicId: string,
+    carId: string
+}
+```
+
+
+#### GET /subjects/{id}
+Require *subject:read* permission
+Return subject of ***{id}*** or whole list if not specified
+
+#### GET /roles/{id}
+Require *role:read* permission
+Return role of ***{id}*** or whole list if not specified
+
+

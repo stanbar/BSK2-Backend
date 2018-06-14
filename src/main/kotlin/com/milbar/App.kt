@@ -58,6 +58,7 @@ fun Application.main() {
     install(CallLogging){
         level = Level.INFO
         filter { call -> call.request.path().startsWith("/login") }
+        filter { call -> call.request.path().startsWith("/users") }
         filter { call -> call.request.path().startsWith("/myRoles") }
         filter { call -> call.request.path().startsWith("/logout") }
         filter { call -> call.request.path().startsWith("/roles") }
@@ -105,6 +106,7 @@ fun Application.main() {
                         return@validate null
                     }
                 }
+
                 return@validate IdPrincipal(SecurityUtils.getSubject().principal as Long)
             }
         }
@@ -184,9 +186,12 @@ suspend fun logout(call: ApplicationCall){
         principals = SimplePrincipalCollection(listOf(subject.principal, rolePrincipal), realm.name)
     }
     val subjectRecreated = DefaultSubjectFactory().createSubject(subjectContext)
-    subjectRecreated.session.stop()
+
     call.sessions.clear<MySession>()
     call.respond(HttpStatusCode.OK,"Successfully logged out")
+
+    subject.session.stop()
+    subjectRecreated.session.stop()
 }
 
 suspend fun handleError(errMsg: String, statusCode: HttpStatusCode, call: ApplicationCall? = null) {

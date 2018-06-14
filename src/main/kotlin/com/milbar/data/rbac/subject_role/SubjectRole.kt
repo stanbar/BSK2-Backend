@@ -7,6 +7,7 @@ import com.milbar.data.rbac.subject.Subject
 
 @DatabaseTable(tableName = "Subject_Role", daoClass = SubjectRolesDaoImpl::class)
 class SubjectRole {
+
     @Transient
     @DatabaseField(foreign = true, foreignAutoCreate = true)
     lateinit var subject: Subject

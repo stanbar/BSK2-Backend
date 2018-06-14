@@ -1,6 +1,7 @@
 package com.milbar
 
 import com.milbar.service.UserService
+import com.stasbar.Logger
 import io.ktor.application.call
 import io.ktor.auth.authenticate
 import io.ktor.auth.principal
@@ -33,6 +34,7 @@ fun Route.login() {
                         val role = it.role
                         hashMapOf("id" to role.id, "name" to role.name, "description" to role.description)
                     }
+                    Logger.d("Roles for user ${user.subject.login}: " + user.subject.subjectRoles.map { it.role.name }.joinToString(","))
                     call.respond(HttpStatusCode.OK, response)
                 } else
                     call.respond(HttpStatusCode.InternalServerError, "Could not find subject after successful login")
@@ -51,6 +53,7 @@ fun Route.login() {
                 val user = userService.findById(currentSubjectId)
                 if (user != null) {
                     val currentRole = user.subject.subjectRoles.find { it.role.id == selectedRoleId }
+                    Logger.d("Logged onto role: "+currentRole?.role?.name)
                     if (currentRole != null) {
                         val sessionId = SecurityUtils.getSubject().session.id as String
                         val mySession = MySession(sessionId, selectedRoleId)

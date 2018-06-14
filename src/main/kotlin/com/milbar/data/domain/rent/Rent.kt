@@ -14,7 +14,7 @@ class Rent {
     @GeneratedValue
     var id: Long = -1
 
-    @DatabaseField(foreign = true, foreignAutoRefresh = true)
+    @DatabaseField(foreign = true, foreignAutoRefresh = true, maxForeignAutoRefreshLevel = 2)
     lateinit var user: User
 
     @DatabaseField(foreign = true, foreignAutoRefresh = true)
