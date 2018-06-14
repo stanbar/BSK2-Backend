@@ -1,5 +1,7 @@
 package com.milbar.service
 
+import com.milbar.data.domain.car.Car
+import com.milbar.data.domain.mechanic.Mechanic
 import com.milbar.data.domain.repair.Repair
 import com.milbar.data.domain.repair.RepairDao
 import org.kodein.di.Kodein
@@ -23,6 +25,16 @@ class RepairService(override val kodein: Kodein) : KodeinAware, Service<Repair, 
         return Repair().apply {
             this.car = car
             this.mechanic = mechanic
+        }.also { dao.create(it) }
+    }
+
+    fun createRepair(car: Car, mechanic: Mechanic): Repair {
+        val fetchedCar = carService.findById(car.id)!!
+        val fetchedMechanic = mechanicService.findById(mechanic.id)!!
+
+        return Repair().apply {
+            this.car = fetchedCar
+            this.mechanic = fetchedMechanic
         }.also { dao.create(it) }
     }
 

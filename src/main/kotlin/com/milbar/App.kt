@@ -16,7 +16,6 @@ import io.ktor.freemarker.FreeMarker
 import io.ktor.gson.gson
 import io.ktor.http.HttpStatusCode
 import io.ktor.locations.Locations
-import io.ktor.request.path
 import io.ktor.response.respond
 import io.ktor.routing.Routing
 import io.ktor.sessions.*
@@ -57,12 +56,6 @@ fun Application.main() {
     }
     install(CallLogging){
         level = Level.INFO
-        filter { call -> call.request.path().startsWith("/login") }
-        filter { call -> call.request.path().startsWith("/users") }
-        filter { call -> call.request.path().startsWith("/myRoles") }
-        filter { call -> call.request.path().startsWith("/logout") }
-        filter { call -> call.request.path().startsWith("/roles") }
-        filter { call -> call.request.path().startsWith("/signup") }
     }
     install(Sessions) { cookie<MySession>("SESSIONID") }
     install(FreeMarker) { templateLoader = ClassTemplateLoader(MyRealm::class.java.classLoader, "templates") }

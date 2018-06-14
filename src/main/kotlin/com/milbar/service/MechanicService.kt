@@ -2,10 +2,10 @@ package com.milbar.service
 
 import com.milbar.data.domain.mechanic.Mechanic
 import com.milbar.data.domain.mechanic.MechanicDao
+import com.milbar.service.exception.SubjectAlreadyExist
 import org.kodein.di.Kodein
 import org.kodein.di.KodeinAware
 import org.kodein.di.generic.instance
-import com.milbar.service.exception.SubjectAlreadyExist
 
 class MechanicService(override val kodein: Kodein) : KodeinAware, Service<Mechanic, MechanicDao>() {
     enum class Selector(val value: String) {
@@ -20,7 +20,6 @@ class MechanicService(override val kodein: Kodein) : KodeinAware, Service<Mechan
         val subject = subjectService.createSubject(login, password)
         assert(subject.id != -1L)
         roleService.setDefaultRoleFor(subject)
-        assert(subject.subjectRoles.isNotEmpty())
 
         val mechanic = Mechanic().apply {
             this.subject = subject
