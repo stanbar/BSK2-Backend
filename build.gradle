@@ -58,7 +58,6 @@ dependencies {
     implementation "io.ktor:ktor-gson:$ktor_version"
     implementation "io.ktor:ktor-locations:$ktor_version"
     implementation "io.ktor:ktor-html-builder:$ktor_version"
-    implementation "io.ktor:ktor-freemarker:$ktor_version"
 
     // Shiro
     implementation "org.apache.shiro:shiro-core:$shiro_version"
