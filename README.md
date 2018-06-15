@@ -115,13 +115,17 @@ SSL is enabled by default, in order to generate keystore with Self-Signed Certif
 ```
 $ ./generateKeystore.sh
 ```
-or better use CA to sign it
+which run
+```bash
+#!/bin/sh
+keytool -keystore keystoreBSK2.jks -genkeypair -alias bsk2 -keyalg RSA -keysize 4096 -validity 5000 -storepass Password123 -keypass Password123 \
+-dname 'CN=Stanislaw Baranski, OU=milbar, O=milbar, L=Gdansk, ST=Pomorskie, C=PL'
+```
 
-Now your server is serving on both `http://localhost:8080` and `https://localhost:8443`
-
-
+Now your server is serving on both `http://localhost:9090` and `https://localhost:8443`
 
 # REST API:
+Frontend is available [here](https://github.com/stasbar/BSK2-Frontend)
 ## POST /signup
 
 - `./testLogin.sh signup <login> <password>`
@@ -292,7 +296,7 @@ Require *rent:read* permission
 Return rent of ***{id}*** or whole list if not specified
 
 #### POST /rents
-Require *rent:write* permission
+Require *rent:create* permission
 Create rent for specific car and peroid of time
 required data
 ```typescript
@@ -309,7 +313,7 @@ Require *repair:read* permission
 Return repair of ***{id}*** or whole list if not specified
 
 #### POST /repairs/{id}
-Require *repair:write* permission
+Require *repair:create* permission
 Create repair for specific car
 required data
 ```typescript
@@ -328,4 +332,5 @@ Return subject of ***{id}*** or whole list if not specified
 Require *role:read* permission
 Return role of ***{id}*** or whole list if not specified
 
+Frontend is available [here](https://github.com/stasbar/BSK2-Frontend)
 

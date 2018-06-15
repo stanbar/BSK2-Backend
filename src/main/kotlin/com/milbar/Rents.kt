@@ -47,7 +47,7 @@ fun Routing.rents() {
 
 
 
-        validateSession(call, "rent:write:*") {
+        validateSession(call, "rent:create:*") {
             rentService.createRent(
                     rents.userId,
                     rents.carId,
