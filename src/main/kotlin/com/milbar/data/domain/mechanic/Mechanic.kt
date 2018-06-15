@@ -8,13 +8,12 @@ import javax.persistence.GeneratedValue
 import javax.persistence.Id
 
 @DatabaseTable(tableName = "Mechanic", daoClass = MechanicDaoImpl::class)
-class
-Mechanic {
+class Mechanic {
     @Id
     @GeneratedValue
     var id: Long = -1
 
-    @DatabaseField(foreign = true, foreignAutoCreate = true)
+    @DatabaseField(foreign = true, foreignAutoCreate = true, foreignAutoRefresh = true)
     lateinit var subject: Subject // representation in RBAC database
 
     @Column(nullable = false)

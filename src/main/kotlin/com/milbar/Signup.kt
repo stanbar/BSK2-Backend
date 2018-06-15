@@ -20,32 +20,32 @@ fun Route.signup() {
     post<Signup> { signup ->
         with(signup) {
             when {
-                login.isNullOrBlank() -> {
+                login.isBlank() -> {
                     call.response.status(HttpStatusCode.NonAuthoritativeInformation)
                     call.response.header("Reason", "login is null or blank")
                     return@post
                 }
-                password.isNullOrBlank() -> {
+                password.isBlank() -> {
                     call.response.status(HttpStatusCode.NonAuthoritativeInformation)
                     call.response.header("Reason", "password is null or blank")
                     return@post
                 }
-                firstName.isNullOrBlank() -> {
+                firstName.isBlank() -> {
                     call.response.status(HttpStatusCode.NonAuthoritativeInformation)
                     call.response.header("Reason", "firstName is null or blank")
                     return@post
                 }
-                lastName.isNullOrBlank() -> {
+                lastName.isBlank() -> {
                     call.response.status(HttpStatusCode.NonAuthoritativeInformation)
                     call.response.header("Reason", "lastName is null or blank")
                     return@post
                 }
-                driverLicence.isNullOrBlank() -> {
+                driverLicence.isBlank() -> {
                     call.response.status(HttpStatusCode.NonAuthoritativeInformation)
                     call.response.header("Reason", "driverLicence is null or blank")
                     return@post
                 }
-                PESEL.isNullOrBlank() -> {
+                PESEL.isBlank() -> {
                     call.response.status(HttpStatusCode.NonAuthoritativeInformation)
                     call.response.header("Reason", "PESEL is null or blank")
                     return@post
