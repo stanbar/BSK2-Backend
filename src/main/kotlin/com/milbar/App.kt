@@ -62,7 +62,6 @@ fun Application.main() {
             this.realm = realm.name
 
             validate { credentials ->
-                Logger.d(credentials)
                 if (!SecurityUtils.getSubject().isAuthenticated) {
                     Logger.d("User is not authenticated will try to login him")
                     val token = UsernamePasswordToken(credentials.name, credentials.password)
@@ -111,7 +110,6 @@ fun Application.main() {
         repairs()
         cars()
         mechanics()
-        permissions()
     }
 }
 
