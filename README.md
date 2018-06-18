@@ -334,3 +334,6 @@ Return role of ***{id}*** or whole list if not specified
 
 Frontend is available [here](https://github.com/stasbar/BSK2-Frontend)
 
+## Literatura
+1. Kryptografia dla praktyków. Protokoły, algorytmy i programy źródłowe w języku C, Bruce Schneler
+
