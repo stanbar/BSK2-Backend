@@ -2,7 +2,6 @@ package com.milbar
 import com.j256.ormlite.support.ConnectionSource
 import com.milbar.exception.IllegalParameterException
 import com.stasbar.Logger
-import freemarker.cache.ClassTemplateLoader
 import io.ktor.application.Application
 import io.ktor.application.ApplicationCall
 import io.ktor.application.install
@@ -12,7 +11,6 @@ import io.ktor.auth.basic
 import io.ktor.features.CallLogging
 import io.ktor.features.ContentNegotiation
 import io.ktor.features.DefaultHeaders
-import io.ktor.freemarker.FreeMarker
 import io.ktor.gson.gson
 import io.ktor.http.HttpStatusCode
 import io.ktor.locations.Locations
@@ -58,7 +56,6 @@ fun Application.main() {
         level = Level.INFO
     }
     install(Sessions) { cookie<MySession>("SESSIONID") }
-    install(FreeMarker) { templateLoader = ClassTemplateLoader(MyRealm::class.java.classLoader, "templates") }
     install(Locations)
     install(Authentication) {
         basic("basic") {
